@@ -1,0 +1,317 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>Java SE HotSpot虚拟机垃圾回收调优指南, 版本 8</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b>
+			<br/>
+			<a href="title.html">下一节</a>
+			<hr/>
+			<div class="smallpagetitle">
+				<h1>目录</h1>
+			</div>
+			<h2>
+				<a href="title.html">标题和版权信息</a>
+			</h2>
+			<h2>
+				<a href="preface.html#gct_preface">前言</a>
+			</h2>
+			<ul style="list-style-type:none">
+				<li>
+					<a href="preface.html#gct_audience">读者</a>
+				</li>
+				<li>
+					<a href="preface.html#gct_accessibility">帮助文档</a>
+				</li>
+				<li>
+					<a href="preface.html#gct_related">相关的文档</a>
+				</li>
+				<li>
+					<a href="preface.html#gct_conventions">公约</a>
+				</li>
+			</ul>
+			<h2>
+				<a href="introduction.html#sthref3"><span>1</span>概述</a>
+			</h2>
+			<h2>
+				<a href="ergonomics.html#ergonomics"><span>2</span>工效学（Ergonomics）</a>
+			</h2>
+			<ul style="list-style-type:none">
+				<li>
+					<a href="ergonomics.html#sthref5">垃圾收集器、堆和运行时编译器默认选项</a>
+				</li>
+				<li>
+					<a href="ergonomics.html#sthref11">基于行为的优化</a>
+					<ul style="list-style-type:none">
+						<li>
+							<a href="ergonomics.html#sthref12">最长暂停时间目标</a>
+						</li>
+						<li>
+							<a href="ergonomics.html#sthref13">吞吐量目标</a>
+						</li>
+						<li>
+							<a href="ergonomics.html#sthref14">占用空间目标（Footprint Goal）</a>
+						</li>
+					</ul>
+				</li>
+				<li>
+					<a href="ergonomics.html#sthref15">调优策略</a>
+				</li>
+			</ul>
+			<h2>
+				<a href="generations.html#sthref16"><span>3</span>代</a>
+			</h2>
+			<ul style="list-style-type:none">
+				<li>
+					<a href="generations.html#sthref19">性能考虑因素</a>
+				</li>
+				<li>
+					<a href="generations.html#sthref20">测量</a>
+				</li>
+			</ul>
+			<h2>
+				<a href="sizing.html#sizing_generations"><span>4</span>设定代的大小</a>
+			</h2>
+			<ul style="list-style-type:none">
+				<li>
+					<a href="sizing.html#sthref22">整个堆</a>
+				</li>
+				<li>
+					<a href="sizing.html#sthref24">年轻代</a>
+					<ul style="list-style-type:none">
+						<li>
+							<a href="sizing.html#sthref25">幸存者空间</a>
+						</li>
+					</ul>
+				</li>
+			</ul>
+			<h2>
+				<a href="collectors.html#sthref27"><span>5</span>可用的垃圾回收器</a>
+			</h2>
+			<ul style="list-style-type:none">
+				<li>
+					<a href="collectors.html#sthref28">选择垃圾回收器</a>
+				</li>
+			</ul>
+			<h2>
+				<a href="parallel.html#parallel_collector"><span>6</span>并行回收器</a>
+			</h2>
+			<ul style="list-style-type:none">
+				<li>
+					<a href="parallel.html#parallel_collector_generations">代</a>
+				</li>
+				<li>
+					<a href="parallel.html#parallel_collector_ergonomics">并行回收器工效学</a>
+					<ul style="list-style-type:none">
+						<li>
+							<a href="parallel.html#parallel_collector_priority">目标优先级</a>
+						</li>
+						<li>
+							<a href="parallel.html#parallel_collector_gen_size">代尺寸调整</a>
+						</li>
+						<li>
+							<a href="parallel.html#default_heap_size">默认堆尺寸</a>
+							<ul style="list-style-type:none">
+								<li>
+									<a href="parallel.html#sthref30">客户端JVM默认初始和最大堆大小</a>
+								</li>
+								<li>
+									<a href="parallel.html#sthref31">服务器JVM默认初始和最大堆大小</a>
+								</li>
+								<li>
+									<a href="parallel.html#sthref32">指定初始和最大堆大小</a>
+								</li>
+							</ul>
+						</li>
+					</ul>
+				</li>
+				<li>
+					<a href="parallel.html#parallel_collector_excessive_gc">过多的GC时间和OutOfMemoryError</a>
+				</li>
+				<li>
+					<a href="parallel.html#parallel_collector_measurements">测量</a>
+				</li>
+			</ul>
+			<h2>
+				<a href="concurrent.html#mostly_concurrent"><span>7</span>主要的并发回收器</a>
+			</h2>
+			<ul style="list-style-type:none">
+				<li>
+					<a href="concurrent.html#sthref33">并发的开销</a>
+				</li>
+				<li>
+					<a href="concurrent.html#sthref34">其他参考资料</a>
+				</li>
+			</ul>
+			<h2>
+				<a href="cms.html#concurrent_mark_sweep_cms_collector"><span>8</span>并发标记清除(CMS)回收器</a>
+			</h2>
+			<ul style="list-style-type:none">
+				<li>
+					<a href="cms.html#concurrent_mode_failure">并发模式失败</a>
+				</li>
+				<li>
+					<a href="cms.html#sthref35">过多的GC时间和OutOfMemoryError</a>
+				</li>
+				<li>
+					<a href="cms.html#sthref36">浮动垃圾</a>
+				</li>
+				<li>
+					<a href="cms.html#sthref37">停顿</a>
+				</li>
+				<li>
+					<a href="cms.html#sthref38">并发阶段</a>
+				</li>
+				<li>
+					<a href="cms.html#sthref39">启动并发回收周期</a>
+				</li>
+				<li>
+					<a href="cms.html#sthref40">调度的停顿</a>
+				</li>
+				<li>
+					<a href="cms.html#CJAGIIEJ">增量模式</a>
+					<ul style="list-style-type:none">
+						<li>
+							<a href="cms.html#sthref41">命令行选项</a>
+						</li>
+						<li>
+							<a href="cms.html#i_cms_recommended_options">推荐选项</a>
+						</li>
+						<li>
+							<a href="cms.html#sthref43">基本疑难解答</a>
+						</li>
+					</ul>
+				</li>
+				<li>
+					<a href="cms.html#sthref45">测量</a>
+				</li>
+			</ul>
+			<h2>
+				<a href="g1_gc.html#garbage_first_garbage_collection"><span>9</span>垃圾优先型垃圾回收器 (G1 GC) </a>
+			</h2>
+			<ul style="list-style-type:none">
+				<li>
+					<a href="g1_gc.html#allocation_evacuation_failure">分配（疏散）失败</a>
+				</li>
+				<li>
+					<a href="g1_gc.html#sthref47">浮动垃圾</a>
+				</li>
+				<li>
+					<a href="g1_gc.html#pauses">停顿</a>
+				</li>
+				<li>
+					<a href="g1_gc.html#sthref48">卡表和并发阶段</a>
+				</li>
+				<li>
+					<a href="g1_gc.html#sthref49">启动并发回收周期</a>
+				</li>
+				<li>
+					<a href="g1_gc.html#pause_time_goal">停顿时间目标</a>
+				</li>
+			</ul>
+			<h2>
+				<a href="g1_gc_tuning.html#g1_gc_tuning"><span>10</span>G1垃圾回收器调优</a>
+			</h2>
+			<ul style="list-style-type:none">
+				<li>
+					<a href="g1_gc_tuning.html#sthref50">垃圾回收阶段</a>
+				</li>
+				<li>
+					<a href="g1_gc_tuning.html#sthref51">年轻代垃圾回收</a>
+				</li>
+				<li>
+					<a href="g1_gc_tuning.html#sthref52">混合垃圾回收</a>
+				</li>
+				<li>
+					<a href="g1_gc_tuning.html#sthref53">标记周期的各个阶段</a>
+				</li>
+				<li>
+					<a href="g1_gc_tuning.html#important_defaults">重要的默认值</a>
+				</li>
+				<li>
+					<a href="g1_gc_tuning.html#how_to_unlock_experimental_vm_flags">如何解锁实验性虚拟机标志</a>
+				</li>
+				<li>
+					<a href="g1_gc_tuning.html#recommendations">建议</a>
+				</li>
+				<li>
+					<a href="g1_gc_tuning.html#sthref61">有关溢出和用尽的日志消息</a>
+				</li>
+				<li>
+					<a href="g1_gc_tuning.html#humongous">超大对象与其分配</a>
+				</li>
+			</ul>
+			<h2>
+				<a href="considerations.html#sthref62"><span>11</span>其他因素</a>
+			</h2>
+			<ul style="list-style-type:none">
+				<li>
+					<a href="considerations.html#sthref63">终结、弱、软和虚引用</a>
+				</li>
+				<li>
+					<a href="considerations.html#sthref64">显式垃圾回收</a>
+				</li>
+				<li>
+					<a href="considerations.html#sthref65">软引用</a>
+				</li>
+				<li>
+					<a href="considerations.html#sthref66">类元数据（Class Metadata）</a>
+				</li>
+			</ul>
+			<a href="title.html">下一节</a>
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">联系我们</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

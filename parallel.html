@@ -1,0 +1,178 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>并行回收器</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b>
+			<br/>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="collectors.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="concurrent.html">下一节</a>
+			<hr/>
+			<div>
+				<a id="CHDCFBIF" name="CHDCFBIF"/>
+				<a id="parallel_collector" name="parallel_collector"/>
+				<div class="smallpagetitle">
+					<h1><span>6</span> 并行回收器</h1>
+				</div>
+				<p>并行回收器（这里也称为<i>吞吐量回收器</i>）是一种分代回收器类似于串行回收器；主要区别是使用多个线程加速垃圾回收。使用命令行选项<code dir="ltr">-XX:+UseParallelGC</code>启用并行回收器。默认情况下，使用此选项，小回收和主回收并行执行来进一步减少垃圾回收开销。</p>
+				<p>在一个有<i>N</i>个硬件线程并且<i>N</i>大于8的机器上，并行回收器使用<i>N</i>固定部分数量的垃圾回收线程。这个分数大约是<i>N</i>的5/8的较大的一个数。在<i>N</i>小于8的时候，使用的（垃圾回收线程）数量是<i>N</i>。在选定平台上，分数下降到 5/16。垃圾回收具体的线程数可以用命令行选项（稍后介绍）调整。在单处理器主机上，并行回收器可能没有串行回收器执行的好由于并行执行的开销（例如，同步）。不过，当运行拥有中等或大型堆尺寸的应用时，在两个处理器的机器上它一般略优于串行回收器，在两个以上处理器的机器上通常远胜于串行回收器。</p>
+				<p>垃圾回收器线程数目可以用命令行选项<code dir="ltr">-XX:ParallelGCThreads=</code><code dir="ltr"><span>&lt;N&gt;</span></code>控制。如果使用命令行选项显式地调优堆，那么并行回收器为了更好的性能所需堆的尺寸与串行回收器是相同的。不过，启用并行回收停顿时间应该更短。因为有多个垃圾回收线程参与小回收，在将年轻代中对象移动到年老代的过程中有可能造成一些碎片。参与小回收的每个垃圾回收线程会保留一块用于移动对象的年老代空间，把可用的空间划分成这些“移动缓冲区”会造成碎片效应。减少垃圾回收线程的数量和增加年老代大小可以减小碎片效应。</p>
+				<a id="parallel_collector_generations" name="parallel_collector_generations"/>
+				<div>
+					<h2>代</h2>
+					<p>正如前面提到的，并行回收器中代的布局是不同的。其布局如<a href="#gen_arrangement_parallel">图 6-1，“并行回收器中代的布局”</a>所示：</p>
+					<div>
+						<a id="gen_arrangement_parallel" name="gen_arrangement_parallel"/>
+						<p><b><i>图 6-1 并行回收器中代的布局</i></b></p>
+						<img alt="Description of Figure 6-1 follows" longdesc="img_text/jsgct_dt_002_armgnt_gn_pl.htm" src="img/jsgct_dt_002_armgnt_gn_pl.png"/>
+						<br/>
+						<a href="http://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/img_text/jsgct_dt_002_armgnt_gn_pl.html" id="sthref29" name="sthref29">Description of “图 6-1 并行回收器中代的布局”的说明</a>
+						<br/>
+						<br/>
+					</div>
+				</div>
+				<a id="parallel_collector_ergonomics" name="parallel_collector_ergonomics"/>
+				<div>
+					<h2>并行回收器工效学</h2>
+					<p>并行回收器是服务器的默认选项（回收器）。此外，并行回收器使用自动调节的方法允许你指定期望的行为而不是代的大小和其他低级的调整细节。你可以指定最大垃圾回收停顿时间，吞吐量和占用空间（堆大小）。</p>
+					<ul>
+						<li>
+							<p><b>最大垃圾回收停顿时间</b>：最大停顿时间目标用命令行选项<code dir="ltr">-XX:MaxGCPauseMillis=</code><code dir="ltr"><span>&lt;N&gt;</span></code>指定。这暗示期望停顿时间是<code dir="ltr"><span>&lt;N&gt;</span></code>毫秒或更少；默认情况下，没有最大停顿时间目标。如果指定了停顿时间目标，（虚拟机）调整堆大小和其他垃圾回收相关参数试图保持垃圾回收停顿时间小于指定的值。这些调整可能造成垃圾回收器降低应用的总吞吐量，并且停顿时间目标也不是总能满足的。</p>
+						</li>
+						<li>
+							<p><b>吞吐量</b>：测量吞吐量目标用回收垃圾的时间比上垃圾回收以外的时间（指应用程序时间）。这个目标用命令行选项<code dir="ltr">-XX:GCTimeRatio=</code><code dir="ltr"><span>&lt;N&gt;</span></code>指定，设置垃圾回收时间和应用程序时间的比例为<code dir="ltr">1 / (1 +</code> <code dir="ltr"><span>&lt;N&gt;</span></code><code dir="ltr">)</code>。</p>
+							<p>例如，<code dir="ltr">-XX:GCTimeRatio=19</code>设置了一个1/20的目标或者说5%的时间用于垃圾回收。默认值是99，表示1%的时间用于垃圾回收。</p>
+						</li>
+						<li>
+							<p><b>占用空间</b>：堆最大占用空间目标用选项<code dir="ltr">-Xmx</code><code dir="ltr"><span>&lt;N&gt;</span></code>指定。此外，只要其他目标满足，回收器会隐式地最小化堆尺寸。</p>
+						</li>
+					</ul>
+					<a id="parallel_collector_priority" name="parallel_collector_priority"/>
+					<div>
+						<h3>目标优先级</h3>
+						<p>目标被处理顺序如下：</p>
+						<ol>
+							<li>
+								<p>最大停顿时间目标</p>
+							</li>
+							<li>
+								<p>吞吐量目标</p>
+							</li>
+							<li>
+								<p>最小占用空间目标</p>
+							</li>
+						</ol>
+						<p>最大的停顿时间目标优先被满足。只有它被满足后才处理吞吐量目标。同样，只有前两个目标满足后才考虑占用空间目标。</p>
+					</div>
+					<a id="parallel_collector_gen_size" name="parallel_collector_gen_size"/>
+					<div>
+						<h3>代尺寸调整</h3>
+						<p>每次回收结束的时候回收器的统计信息像平均停顿时间等会被更新。检查目标是否被满足，根据需要调整代的尺寸。例外情况是显式垃圾回收（例如，调用<code dir="ltr">System.gc()</code>）在保持统计和调整大小时会被忽略掉。</p>
+						<p>通过固定百分比的增量来增大和缩小代的大小，这样代朝着期望的尺寸向上或向下调整。以不同的比率增大和缩小（代尺寸）。默认情况下，代以20%的增量增大以5%的增量缩小。年轻代和年老代增大的百分比分别用命令行选项<code dir="ltr">-XX:YoungGenerationSizeIncrement=</code><code dir="ltr"><span>&lt;Y&gt;</span></code>和<code dir="ltr">-XX:TenuredGenerationSizeIncrement=</code><code dir="ltr"><span>&lt;T&gt;</span></code>指定。代缩小的百分比通过命令行选项<code dir="ltr">-XX:AdaptiveSizeDecrementScaleFactor=</code><code dir="ltr"><span>&lt;D&gt;</span></code>指定。If the growth increment is <i>X</i> percent, then the decrement for shrinking is <i>X</i>/<i>D</i> percent.</p>
+						<p>如果回收器在启动时决定增加代的大小，会有一个额外的百分比追加到增量上。这个额外增量随着回收的次数增加而减少，并且没有长期的影响。这个额外增量是为了提高启动性能。收缩没有这个额外的百分比。</p>
+						<p>如果最大停顿时间目标没有达到，一次只会缩小一个代的尺寸。如果两个代的停顿时间都没有达到目标，停顿时间较大的那个代会首先被缩小。</p>
+						<p>如果吞吐量目标没有达到，那么两个代的大小都会增加。每个代按照各自对垃圾回收时间的贡献比例增加。例如，如果年轻代的垃圾回收时间占去了25%的总垃圾回收时间，如果全部增量是20%，那么年轻代的增量将是5%。</p>
+					</div>
+					<a id="default_heap_size" name="default_heap_size"/>
+					<div>
+						<h3>默认堆尺寸</h3>
+						<p>除非用命令行指定初始和最大堆大小，否则它们基于主机内存计算得到。</p>
+						<div>
+							<a id="sthref30" name="sthref30"/>
+							<h4>客户端JVM默认初始和最大堆大小</h4>
+							<p>默认最大堆大小在物理内存到192兆字节（MB）时是物理内存的一半，物理内存多达1千兆字节(GB)时是物理内存的四分之一。</p>
+							<p>例如，如果您的计算机有128MB的物理内存，那么最大堆大小是64MB，并且物理内存大于等于1GB时最大堆大小是256MB。</p>
+							<p>最大堆大小没有真的被JVM使用除非你的程序创建足够多的对象需要它。一个非常小的，被称为<i>初始堆大小</i>，是在JVM初始化的过程中分配的。这个大小至少是8MB另外物理内存多达1GB时是物理内存的1/64。</p>
+							<p>分配给年轻代的最大空间是总堆大小的三分之一。</p>
+						</div>
+						<div>
+							<a id="sthref31" name="sthref31"/>
+							<h4>服务器JVM默认初始和最大堆大小</h4>
+							<p>服务器JVM默认初始和最大堆大小与客户端JVM类似，除了默认值高点。在32位JVM上，默认最大堆大小可以到1GB如果有4GB或更多的物理内存。在64位JVM上默认最大堆大小可以到32GB如果有128GB或更高的物理内存。你总是可以设置一个更高或更低的初始和最大堆大小通过直接指定这些值；请参阅下一节。</p>
+						</div>
+						<div>
+							<a id="sthref32" name="sthref32"/>
+							<h4>指定初始和最大堆大小</h4>
+							<p>你可以用选项<code dir="ltr">-Xms</code>（初始堆大小）和<code dir="ltr">-Xmx</code>（最大堆大小）指定初始和最大堆大小。如果你知道你的应用需要多少堆可以工作的很好。如果不是这样，JVM会以初始堆大小启动然后增大java堆大小直到在堆使用情况和性能间找到一个平衡。</p>
+							<p>其他参数和选项会影响这些默认值。若要验证您的默认值，请使用<code dir="ltr">-XX:+PrintFlagsFinal</code>选项并在输出中寻找<code dir="ltr">MaxHeapSize</code>。例如，在Linux或Solaris系统上，您可以会运行以下命令：</p>
+							<pre dir="ltr" xml:space="preserve">
+java -XX:+PrintFlagsFinal <span>&lt;GC options&gt;</span> -version | grep MaxHeapSize
+							</pre>
+						</div>
+					</div>
+				</div>
+				<a id="parallel_collector_excessive_gc" name="parallel_collector_excessive_gc"/>
+				<div>
+					<h2>过多的GC时间和OutOfMemoryError</h2>
+					<p>如果太多的时间用于垃圾回收(GC)并行回收器会抛出<code dir="ltr">OutOfMemoryError</code>：如果超过98%的总时间用于垃圾回收并且小于2%的堆被回收，那么抛出一个<code dir="ltr">OutOfMemoryError</code>。这个特性用于防止堆太小而导致的应用长时间取得很少或没有进展。如果有必要，可以通过命令行选项<code dir="ltr">-XX:-UseGCOverheadLimit</code>关闭这个特性。</p>
+				</div>
+				<a id="parallel_collector_measurements" name="parallel_collector_measurements"/>
+				<div>
+					<h2>测量</h2>
+					<p>并行垃圾回收器的详细输出和串行回收器基本相同。</p>
+				</div>
+			</div>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="collectors.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="concurrent.html">下一节</a>
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">联系我们</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,103 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>主要的并发回收器</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b><br/>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="parallel.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="cms.html">下一节</a>
+			<hr/>
+			<div>
+				<a id="mostly_concurrent" name="mostly_concurrent"/>
+				<div class="smallpagetitle">
+					<h1><span>7</span> 主要的并发回收器</h1>
+				</div>
+				<p>JDK 8中Java Hotspot虚拟机由两个主要的并发回收器：</p>
+				<ul>
+					<li>
+						<p><a href="cms.html#concurrent_mark_sweep_cms_collector">并发标记清除(CMS)回收器</a>：该回收器适用于需要更短的垃圾回收暂停时间并且能与垃圾回收共享处理器资源的应用程序。</p>
+					</li>
+					<li>
+						<p><a href="g1_gc.html#garbage_first_garbage_collection">G1垃圾回收器</a>：此服务器回收器适用于大内存的多处理器机器。它在实现高吞吐量的同时高概率地满足垃圾回收停顿时间目标。</p>
+					</li>
+				</ul>
+				<div>
+					<a id="sthref33" name="sthref33"/>
+					<h2>并发的开销</h2>
+					<p>主要的并发回收器用处理器资源（本该用于应用程序）换取更短的主回收停顿时间。最明显的开销是在回收的并发部分使用一个或多个处理器。在<i>N</i>处理器系统上，回收的并发部分将使用<i>K</i>/<i>N</i>的可用处理器，1&lt;=<i>K</i>&lt;=ceiling{<i>N</i>/4}。（注意<i>K</i>的精确取值及边界值在以后可能会改变。）除了在并发阶段处理器的使用，额外的开销就是并发本身。因此并发回收器的垃圾回收停顿时间通常短一些，同时应用的吞吐量也略低于其他回收器。</p>
+					<p>对多个处理核心的机器，在并发回收部分处理器对应用线程是可用的，因此并发垃圾回收线程并不“暂停”该应用程序。这通常导致更短的停顿时间，但应用也将有更少的处理器资源并预期减缓（执行速度），特别是如果该应用程序最大限度地使用所有处理核心。随着<i>N</i>增加，由于并发垃圾回收处理器的资源的减少变得更小，并发回收的效益将增加。在<a href="cms.html#concurrent_mark_sweep_cms_collector">并发标记清除(CMS)回收器</a>章<a href="cms.html#concurrent_mode_failure">并发模式失败</a>节中论述了这种缩放的潜在限制。</p>
+					<p>因为并发阶段至少一个处理器用于垃圾回收，所以在单处理器（单核）机器上通常不能从并发回收中受益。然而，在只有一个或两个处理器的系统上对于CMS（不是G1）有个分离模式可以降低停顿时间；详细信息请参阅<a href="cms.html#concurrent_mark_sweep_cms_collector">并发标记清除(CMS)回收器</a>章中<a href="cms.html#CJAGIIEJ">增量模式</a>一节。此功能在Java SE 8被弃用，并可能在以后的主要版本中移除。</p>
+				</div>
+				<div>
+					<a id="sthref34" name="sthref34"/>
+					<h2>其他参考</h2>
+					<p>G1垃圾回收器：</p>
+					<p><code dir="ltr"><a href="http://www.oracle.com/technetwork/java/javase/tech/g1-intro-jsp-135488.html">http://www.oracle.com/technetwork/java/javase/tech/g1-intro-jsp-135488.html</a></code></p>
+					<p>G1垃圾回收器调优：</p>
+					<p><code dir="ltr"><a href="http://www.oracle.com/technetwork/articles/java/g1gc-1984535.html">http://www.oracle.com/technetwork/articles/java/g1gc-1984535.html</a></code></p>
+				</div>
+			</div>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="parallel.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="cms.html">下一节</a>
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">联系我们</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

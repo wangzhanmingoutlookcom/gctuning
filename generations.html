@@ -1,0 +1,194 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>代</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b>
+			<br/>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="ergonomics.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="sizing.html">下一节</a>
+			<hr/>
+			<div>
+				<a id="sthref16" name="sthref16"/>
+				<div class="smallpagetitle">
+					<h1><span>3</span> 代</h1>
+				</div>
+				<p>Java SE平台的优势之一是它将开发人员从复杂的内存分配和垃圾回收中解放出来。然而，一旦垃圾回收成为主要的（性能）瓶颈，就有必要了解一下背后的实现细节。垃圾回收器对应用程序使用对象的方式进行假定，这些（假定）都反映在可调优的参数上，通过调整这些参数就可以提高性能而又不会牺牲抽象性。</p>
+				<p>对象被视为垃圾，当它在运行的程序中不能从任何指针到达。最简单的垃圾回收算法是遍历每个可达的对象。剩下的任何对象都被视为垃圾。该方法的耗时和存活对象数量成正比，这对保持大量存活数据的大型应用来说是不可接受的。</p>
+				<p>虚拟机包含不同的垃圾回收算法，通过<i>分代回收</i>结合使用（are combined using generational collection）。与朴素的垃圾回收检查堆中每个存活对象不同，分代回收利用从大多数应用观察到经验来尽量减少回收无用（垃圾）对象的工作量。观察到的最重要的特征是<i>弱代假设</i>，该假设认为大部分对象都只存活一小段时间。</p>
+				<p>蓝色区域<a href="#distribution_lifetimes">图 3-1, “对象生存期的典型分布”</a>对象生存期的典型分布。横轴是对象生存周期。纵轴是相应生存周期对象的总字节数。左侧的峰值表示分配后不久就可以回收（即是说，对象死了）的对象。例如，迭代器对象常常只存活单个循环的时间。</p>
+				<div>
+					<a id="distribution_lifetimes" name="distribution_lifetimes"/>
+					<p><b><i>图 3-1 对象生存期的典型分布</i></b></p>
+					<img alt="Description of Figure 3-1 follows" longdesc="img_text/jsgct_dt_003_alc_vs_srvng.htm" src="img/jsgct_dt_003_alc_vs_srvng.png"/>
+					<br/>
+					<a href="http://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/img_text/jsgct_dt_003_alc_vs_srvng.html" id="sthref17" name="sthref17">“图 3-1 对象生存期的典型分布”的说明</a><br/>
+					<br/>
+				</div>
+				<p>有些对象确实存活时间更长，因此分布曲线延伸到了右边。例如，通常有一些对象在初始化的时候被创建，并一直存活到进程结束。在这两种极端情况之间，是那些存活时间中等的对象，见图中峰值右边的块状区域。有些应用有非常不同的分布曲线，不过大多数（应用）都是这个常见的形状。基于大多数对象都“英年早逝”这个事实，高效回收是可能的。</p>
+				<p>为了优化这种情况，使用<i>分代</i>（持有不同年龄对象的内存池）的方法管理内存。当一个代被填满后，（虚拟机）就对该代执行垃圾回收。绝大多数对象被分配在用于存储年轻对象的内存池中（<i>年轻代</i>），并且大部分对象会死在这。当年轻代被填满时，会执行一次<i>小回收</i>只回收年轻代；其他代的垃圾不回收。小回收可以被优化，如果弱代假设成立即年轻代中的大部分对象都是垃圾并可以被回收。这种回收的成本一阶正比于（正在回收的代中）存活对象的数量；回收一个满是死亡对象的年轻代会非常快。通常，每次小回收过程中，一部分来自于年轻代的幸存对象会被转移至年老代。最终，<i>年老代</i>被填满需要回收的时候，（虚拟机）执行一次<i>主回收</i>，这个过程中整个堆都会被回收。主回收通常会比小回持续更长时间，由于涉及更多的对象。</p>
+				<p>如<a href="ergonomics.html#ergonomics">工效学</a>所述，工效学会动态选择垃圾回收器为各种应用提供良好的性能。串行垃圾回收器是专为数据量小的程序设计的，而且它的缺省参数能让大多数小程序高效工作。并行也称作大吞吐量垃圾回收器用于有中等到大数据量的应用。工效学选择的堆尺寸参数加上自适应尺寸策略的特性是为了为服务器应用提供更好的性能。这些选择在大多数，但不是所有的，情况下工作得很好，这就引出了本文的核心宗旨︰</p>
+				<div align="center">
+					<div>
+						<br/>
+						<table border="1" cellpadding="3" cellspacing="0" dir="ltr" frame="hsides" rules="groups" summary="" width="80%">
+							<tbody>
+								<tr>
+									<td align="left">
+										<p><b>注意：</b></p>如果垃圾回收器成为瓶颈，你很可能需要调整整个堆的大小和每个代的大小。检查垃圾回收器的详细输出，然后探索垃圾回收器参数对你关注的各个性能指标的影响。</td>
+								</tr>
+							</tbody>
+						</table>
+						<br/>
+					</div>
+				</div>
+				<p><a href="#default_arrangement_gen">图 3-2，“代默认布局，除了并行回收器和G1回收器”</a>展示了代的默认布局（除了并行回收器和G1回收器外的所有回收器）：</p>
+				<div>
+					<a id="default_arrangement_gen" name="default_arrangement_gen"/>
+					<p><b><i>图 3-2 代默认布局，除了并行回收器和G1回收器</i></b></p>
+					<img alt="Description of Figure 3-2 follows" longdesc="img_text/jsgct_dt_001_armgnt_gn.htm" src="img/jsgct_dt_001_armgnt_gn.png"/><br/>
+					<a href="http://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/img_text/jsgct_dt_001_armgnt_gn.html" id="sthref18" name="sthref18">“图 3-2 代默认布局，除了并行回收器和G1回收器”的说明</a><br/>
+					<br/>
+				</div>
+				<p>初始化的时候，（JVM）虚拟保留一个最大的地址空间，只有真正需要的时候才会分配物理内存。整个保留的对象内存地址空间被划分为年轻代和年老代。</p>
+				<p>年轻代包括伊甸园和两个幸存者空间。大多数对象最初都分配在伊甸园中。一个幸存者空间在任何时候都是空的，并用作为伊甸园中存活对象的目的地；另一个幸存者空间是下一次复制回收的目的地。对象以这种方式在幸存者空间之间拷贝，直到足够老被授予年老代称号（被复制到年老代中）。</p>
+				<div>
+					<a id="sthref19" name="sthref19"/>
+					<h2>性能考虑因素</h2>
+					<p>对于垃圾回收的性能，主要有两种度量方法：</p>
+					<ul>
+						<li>
+							<p><i>吞吐量</i>是在一段足够长的时间中，没有花费在垃圾回收上的时间占总时间的百分比。吞吐量包含分配（内存）的时间（不过内存空间分配速度的调优一般是没有必要的）。</p>
+						</li>
+						<li>
+							<p><i>停顿</i>由于等待垃圾回收而导致程序没有响应的时间。</p>
+						</li>
+					</ul>
+					<p>（不同）用户对垃圾回收有不同的需求。例如，有些人认为度量web服务的正确指标是吞吐量，因为垃圾回收期间的停顿是可以容忍的或者说很容易被网络延迟所掩盖。然而在交互式图形界面程序中，短暂的停顿也会影响用户体验。</p>
+					<p>一些用户对其他因素敏感。<i>占用空间（footprint）</i>是一个进程的工作集合，用内存页和缓存行来度量。在内存受限或者进程数量很多的系统上，占用空间决定着（应用的）可伸缩性。<i>及时性</i>是对象死掉到（该对象所占）内存重新可用之前的时间间隔，这是分布式系统包括远程方法调用（RMI）的一个重要考虑因素。</p>
+					<p>总之，一个特定的代尺寸选择是上述因素权衡的结果。例如，一个非常大的年轻代可以最大化吞吐量，但会以牺牲占用空间、及时性和停顿时间作为代价。小的年轻代可以最小化停顿时间，但会以牺牲吞吐量为代价。调整一个代的大小不会影响到其他代的回收频率和停顿时间。</p>
+					<p>没有绝对正确的方式选择代的大小。最好的选择取决于程序使用内存的方式和用户的需求。因此，虚拟机给出的垃圾回收器选项并不总是最优的，可能需要使用命令行选项覆盖，请参阅<a href="sizing.html#sizing_generations">调整代的大小</a>。</p>
+				</div>
+				<div>
+					<a id="sthref20" name="sthref20"/>
+					<h2>测量</h2>
+					<p>吞吐量和占用空间最好使用特定的度量程序测量。例如，web服务器的吞吐量可以使用客户端负载生成器来测量，而该服务器的占用空间在Solaris操作系统中可以使用<code dir="ltr">pmap</code>命令测量。另外，通过检查虚拟机本身的诊断输出很容易估算垃圾回收停顿时间。</p>
+					<p>命令行选项<code dir="ltr">-verbose:gc</code>输出每次回收关于堆和垃圾回收的信息。例如，下面是大型服务器应用程序的输出：</p>
+					<pre dir="ltr" xml:space="preserve">
+[GC 325407K-&gt;83000K(776768K), 0.2300771 secs]
+[GC 325816K-&gt;83372K(776768K), 0.2454258 secs]
+[Full GC 267628K-&gt;83769K(776768K), 1.8479984 secs]
+					</pre>
+					<p>输出显示两次小回收，跟着一次主回收。箭头前后的数字（例如第一行<code dir="ltr">325407K-&gt;83000K</code>）分别表示垃圾回收前后存活对象占用空间。小回收执行完后，仍然还存在一些不能被回收的垃圾（死掉的）对象。这些对象要么存放在年老代中，要么被年老代中的对象所引用。</p>
+					<p>后面括号中的数字（例如，还是第一行<code dir="ltr">(776768K)</code>）是堆的大小：用于存储java对象的内存空间，在不向操作系统申请更多内存的情况下。注意，这个数字只包括一个幸存者空间。除了垃圾回收期间，任何时候都只有一个幸存者空间用于存储对象。</p>
+					<p>最后一个数字（例如<code dir="ltr">0.2300771 secs</code>）是垃圾回收所花费的时间，在这个例子里大约是四分之一秒。</p>
+					<p>第三行中主回收的格式也是类似的。</p>
+					<div align="center">
+						<div>
+							<br/>
+							<table border="1" cellpadding="3" cellspacing="0" dir="ltr" frame="hsides" rules="groups" summary="" width="80%">
+								<tbody>
+									<tr>
+										<td align="left">
+											<p><b>注意:</b></p>
+											<code dir="ltr">-verbose:gc</code>产生的输出格式可能在将来的版本里有所改变。
+										</td>
+									</tr>
+								</tbody>
+							</table>
+							<br/>
+						</div>
+					</div>
+					<p>命令行选项<code dir="ltr">-XX:+PrintGCDetails</code>打印更多垃圾回收相关的信息。一个串行垃圾回收器使用选项<code dir="ltr">-XX:+PrintGCDetails</code>的例子如下。</p>
+					<pre dir="ltr" xml:space="preserve">
+[GC [DefNew: 64575K-&gt;959K(64576K), 0.0457646 secs] 196016K-&gt;133633K(261184K), 0.0459067 secs]
+					</pre>
+					<p>信息显示，这次小回收恢复了98%的年轻代空间<code dir="ltr">DefNew: 64575K-&gt;959K(64576K)</code>用时<code dir="ltr">0.0457646 secs</code>（大约45毫秒）。</p>
+					<p>整个堆的使用率下降到大约51%（<code dir="ltr">196016K-&gt;133633K(261184K)</code>），在回收中有轻微的额外开销（在年轻代之外的时间），如最终时间<code dir="ltr">0.0459067 secs</code>所示。</p>
+					<div align="center">
+						<div>
+							<br/>
+							<table border="1" cellpadding="3" cellspacing="0" dir="ltr" frame="hsides" rules="groups" summary="" width="80%">
+								<tbody>
+									<tr>
+										<td align="left">
+											<p><b>注意:</b></p>
+											<code dir="ltr">-XX:+PrintGCDetails</code>产生的输出格式可能在将来的版本里有所改变。
+										</td>
+									</tr>
+								</tbody>
+							</table>
+							<br/>
+						</div>
+					</div>
+					<p>选项<code dir="ltr">-XX:+PrintGCTimeStamps</code>提供每次回收开始的时间戳。这对于查看垃圾回收频率非常有用。</p>
+					<pre dir="ltr" xml:space="preserve">
+111.042: [GC 111.042: [DefNew: 8128K-&gt;8128K(8128K), 0.0000505 secs]111.042: [Tenured: 18154K-&gt;2311K(24576K), 0.1290354 secs] 26282K-&gt;2311K(32704K), 0.1293306 secs]
+					</pre>
+					<p>垃圾回收在程序运行111秒后开始。小回收几乎在相同时间启动。此外，还显示了用年老的（Tenured）描述的主回收信息。年老代的空间使用率下降到大约 10%（<code dir="ltr">18154K-&gt;2311K(24576K)</code>）用时<code dir="ltr">0.1290354 secs</code>（大约130毫秒）。</p>
+				</div>
+			</div>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="ergonomics.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="sizing.html">下一节</a>
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">联系我们</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

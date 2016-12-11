@@ -1,0 +1,108 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>概述</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b>
+			<br/>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="preface.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="ergonomics.html">下一节</a>
+			<hr/>
+			<div>
+				<a id="sthref3" name="sthref3"/>
+				<div class="smallpagetitle">
+					<h1><span>1</span> 概述</h1>
+				</div>
+				<p>Java平台（Java SE™）被广泛应用于各种应用，从桌面上小小的applet到大型服务器上的Web服务。为了支持各种不同的部署场景，Java虚拟机实现(Java HotSpot VM)提供了多个垃圾回收器，每个旨在满足不同的要求。这也是满足大小应用不同要求的重要组成部分。Java SE根据计算机运行应用程序的种类来选择最适当的垃圾回收器。然而，对于每个应用来说这种选择可能不是最佳的。对于有严格性能目标或其他需求的用户、开发者和管理员，可能需要显式选择垃圾收集器的种类并且调整某些参数来实现所需级别的性能要求。本文档会提供信息帮助完成这些任务，首先在串行垃圾回收器（the serial, stop-the-world collector）部分会介绍垃圾回收器的一般特征和基本的优化选项。然后在考虑选择回收器的因素时会介绍其他垃圾回收器的特有特征。</p>
+				<p>垃圾回收器(GC)是一个内存管理工具。它通过以下操作来实现自动内存管理︰</p>
+				<ul>
+					<li>
+						<p>分配对象到年轻代，提升老的对象到年老代。</p>
+					</li>
+					<li>
+						<p>并发（并行）标记阶段在老年代查找活着的对象。当整个堆的占用率超过默认阈值时Java HotSpot虚拟机进入标记阶段。请参阅章节<a href="cms.html#concurrent_mark_sweep_cms_collector">并发标记清除回收器(CMS)</a>和<a href="g1_gc.html#garbage_first_garbage_collection">G1(Garbage-First)垃圾回收器</a>。</p>
+					</li>
+					<li>
+						<p>并行复制过程中通过压缩活着的对象恢复可用内存。请参阅章节<a href="parallel.html#CHDCFBIF">并行垃圾回收器</a>和<a href="g1_gc.html#garbage_first_garbage_collection">G1(Garbage-First)垃圾回收器</a></p>
+					</li>
+				</ul>
+				<p>何时选择一个垃圾回收器显得重要？对于某些应用程序，答案是“永远不”。也就是说适度频率和持续时间的停顿的垃圾回收器可以让应用执行的很好。然而对于一大类应用来说情况不是这样的，尤其是那些有大量数据（若干GB），很多线程和很多事务（high transaction rates）的应用。</p>
+				<p>阿姆达尔定律（在给定问题中并行加速比会受到串行部分的限制）意味着大多数工作不能完全并行化；一部分工作总是串行的，无法从并行化中获益。对Java平台来说也是如此。特别是J2SE 1.4以前Oracle虚拟机不支持并行垃圾回收，这样在多处理器系统中，垃圾回收会对并行应用产生更大的影响。</p>
+				<p><a href="#percentage_time_gc">图 1-1，“垃圾回收时间百分比对比”</a>模拟了一个除垃圾回收（GC）外其他方面均具有完全可伸缩性的理想系统的性能曲线。红线是一个在单处理器系统中花费1%的时间用于垃圾回收的应用。这相当于在32核系统中损失了超过20%的吞吐量。洋红色线表明一个花费10%的时间用于垃圾回收（不考虑在单处理器应用中离谱的垃圾回收时间）的应用，扩展到32 核系统时，会损失超过75%的吞吐量。</p>
+				<div>
+					<a id="percentage_time_gc" name="percentage_time_gc"/>
+					<p><b><i>图 1-1，垃圾回收时间百分比对比</i></b></p>
+					<img alt="Description of Figure 1-1 follows" longdesc="img_text/jsgct_dt_005_gph_pc_vs_tp.htm" src="img/jsgct_dt_005_gph_pc_vs_tp.png"/>
+					<br/>
+					<a href="http://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/img_text/jsgct_dt_005_gph_pc_vs_tp.html" id="sthref4" name="sthref4">"图 1-1，垃圾回收时间百分比对比"的说明</a>
+					<br/>
+					<br/>
+				</div>
+				<p>这表明小型系统上可以忽略不计的速度问题可能成为主要瓶颈当扩展到大型系统时。当然，减少这种瓶颈的小的提升也可以获得很大的性能收益。对足够大型的系统来说，选择合适的垃圾回收器并进行必要的调优是绝对值得的。</p>
+				<p>对于大多数“小”应用（运行于现代处理器上，需要大约100MB堆的应用）来说，串行垃圾回收器通常是足够的。其他垃圾回收器会有额外的开销或复杂性，这是使用专门的回收器的代价。如果应用不需要其他可选回收器的特性，那么就使用串行垃圾回收器。一个不应该使用串行垃圾回收器的场景是，运行在拥有大量内存和两个或多个处理器的机器上的具有超多线程的大型应用。当应用运行在这种服务器级的主机上时，虚拟机会默认选择并行垃圾回收器。请参阅<a href="ergonomics.html#ergonomics">工效学</a>。</p>
+				<p>本文以Solaris操作系统（SPARC 平台版）中的Java SE 8作为参考。不过，文中所述的概念和建议也适用于所有被支持的平台，包括Linux、Microsoft Windows、Solaris操作系统（x64 平台版）等等操作系统。此外，文中提到的命令行选项在所有被支持的平台上均可用，虽然它们的缺省值在各个平台可能有所不同。</p>
+			</div>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="preface.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="ergonomics.html">下一节</a>
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">联系我们</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

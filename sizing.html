@@ -1,0 +1,252 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>设定代的大小</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b>
+			<br/>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="generations.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="collectors.html">下一节</a>
+			<hr/>
+			<div>
+				<a id="sizing_generations" name="sizing_generations"/>
+				<div class="smallpagetitle">
+					<h1><span>4</span> 设定代的大小</h1>
+				</div>
+				<p>很多参数会影响到代的大小。<a href="#heap_parameters">图 4-1，“堆参数”</a>阐明了堆提交和虚拟空间的区别。虚拟机初始化的时候，整个堆空间都是保留的。堆保留空间大小可以通过选项<code dir="ltr">-Xmx</code> 指定。如果参数<code dir="ltr">-Xms</code>小于参数<code dir="ltr">-Xmx</code>，那么不是所有的保留空间都被立刻提交到虚拟机之中。未提交的空间在该图中标记为“虚拟（virtual）”。堆的不同部分（年老代和年轻代）可以按需扩展到虚拟空间的上限。</p>
+				<p>一些参数是堆的一部分和另一部分的比值。例如参数<code dir="ltr">NewRatio</code>表示年老代对年轻代的比值（年老代/年轻代）。</p>
+				<div>
+					<a id="heap_parameters" name="heap_parameters"/>
+					<p><b><i>图 4-1 堆参数</i></b></p>
+					<img alt="Description of Figure 4-1 follows" longdesc="img_text/jsgct_dt_006_prm_gn_sz.htm" src="img/jsgct_dt_006_prm_gn_sz.png"/>
+					<br/>
+					<a href="http://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/img_text/jsgct_dt_006_prm_gn_sz.html" id="sthref21" name="sthref21">“图 4-1 堆参数”的说明</a>
+					<br/>
+					<br/>
+				</div>
+				<div>
+					<a id="sthref22" name="sthref22"/>
+					<h2>整个堆</h2>
+					<p>接下来是关于堆的增大、收缩和默认堆大小的讨论，该讨论不适用于并行垃圾回收器。（请参阅<a href="parallel.html#parallel_collector_ergonomics">并行垃圾回收器工效学</a>在<a href="#sizing_generations">设定代的大小</a>中有关于并行垃圾回收器堆大小调整和默认堆大小的细节信息。）不过，用于控制整个堆大小和代尺寸的参数适用于并行垃圾回收器。</p>
+					<p>总可用内存数是影响垃圾回收性能的最重要因素。因为在代被填满时才进行垃圾回收，所以吞吐量反比于可用内存数量。</p>
+					<p>默认情况下，虚拟机在每次垃圾回收后通过增加或减少堆尺寸来尽量保持空闲空间与存活对象所占空间的比例在一定范围内。这个目标范围用参数<code dir="ltr">-XX:MinHeapFreeRatio=</code><code dir="ltr"><span>&lt;minimum&gt;</span></code>和<code dir="ltr">-XX:MaxHeapFreeRatio=</code><code dir="ltr"><span>&lt;maximum&gt;</span></code>设定，总堆大小的下限用<code dir="ltr">-Xms</code><code dir="ltr"><span>&lt;min&gt;</span></code>上限用<code dir="ltr">-Xmx</code><code dir="ltr"><span>&lt;max&gt;</span></code>指定。64位Solaris操作系统（SPARC平台版）的默认参数<a href="#default_param_solaris">表 4-1， “64位Solaris操作系统的默认参数”</a>如下：</p>
+					<div>
+						<a id="sthref23" name="sthref23"/>
+						<a id="default_param_solaris" name="default_param_solaris"/>
+						<p>表 4-1 64位Solaris操作系统的默认参数</p>
+						<table border="1" cellpadding="3" cellspacing="0" dir="ltr" frame="border" rules="all" summary="Default values for 64-bit Solaris operating system" title="Default Parameters for 64-Bit Solaris Operating System" width="100%">
+							<col width="31%"/>
+							<col width="*"/>
+							<thead>
+								<tr align="left" valign="top">
+									<th align="left" id="r1c1-t2" valign="bottom">参数</th>
+									<th align="left" id="r1c2-t2" valign="bottom">默认值</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr align="left" valign="top">
+									<td align="left" headers="r1c1-t2" id="r2c1-t2">
+										<p><code dir="ltr">MinHeapFreeRatio</code></p>
+									</td>
+									<td align="left" headers="r2c1-t2 r1c2-t2">
+										<p><code dir="ltr">40</code></p>
+									</td>
+								</tr>
+								<tr align="left" valign="top">
+									<td align="left" headers="r1c1-t2" id="r3c1-t2">
+										<p><code dir="ltr">MaxHeapFreeRatio</code></p>
+									</td>
+									<td align="left" headers="r3c1-t2 r1c2-t2">
+										<p><code dir="ltr">70</code></p>
+									</td>
+								</tr>
+								<tr align="left" valign="top">
+									<td align="left" headers="r1c1-t2" id="r4c1-t2">
+										<p><code dir="ltr">-Xms</code></p>
+									</td>
+									<td align="left" headers="r4c1-t2 r1c2-t2">
+										<p><code dir="ltr">6656k</code></p>
+									</td>
+								</tr>
+								<tr align="left" valign="top">
+									<td align="left" headers="r1c1-t2" id="r5c1-t2">
+										<p><code dir="ltr">-Xmx</code></p>
+									</td>
+									<td align="left" headers="r5c1-t2 r1c2-t2">
+										<p><code dir="ltr">calculated</code></p>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+						<br/>
+					</div>
+					<p>使用这些参数，如果一个代中可用空间的百分比低于40%，那么（虚拟机）扩大该代来保持40%的可用空间，直到该代所允许的最大尺寸。同样，如果可用空间超过70%，那么代会收缩保持只有70%的空间是可用的，直到代的最小尺寸。</p>
+					<p>如<a href="#default_param_solaris">表 4-1，“64位Solaris操作系统的默认参数”</a>所述，默认最大堆尺寸由JVM计算得出。server JVM并行回收中的计算方法用于所有的垃圾回收。其中一个是计算最大堆尺寸上限，这对与32位平台和64位平台计算结果是不同的。请参阅<a href="parallel.html#default_heap_size">默认堆尺寸</a>在<a href="parallel.html#CHDCFBIF">并行垃圾回收</a>章中。在client JVM中也有类似的计算，不过最大堆尺寸的计算结果比server JVM的要小。</p>
+					<p>对于服务器应用来说，设置的一般原则是：</p>
+					<ul>
+						<li>
+							<p>除非遇到停顿问题，否则给虚拟机尽量多的内存。因为默认尺寸通常太小了。</p>
+						</li>
+						<li>
+							<p>设置<code dir="ltr">-Xms</code>和<code dir="ltr">-Xmx</code>为相同的值，虚拟机就不需要进行尺寸调整，这样增强了可预见性。但是，如果你做的是错误的决定，将不能从虚拟机中得到补偿。</p>
+						</li>
+						<li>
+							<p>一般地，增加处理器数量的同时增加内存，因为（内存）分配可以并行化。</p>
+						</li>
+					</ul>
+				</div>
+				<div>
+					<a id="sthref24" name="sthref24"/>
+					<h2>年轻代</h2>
+					<p>继可用内存之后，第二个影响垃圾回收性能最重要的因素是用于年轻代堆的比例。年轻代越大，进行小回收的次数也就越少。不过，在堆大小给定的情况下，年轻代越大，就意味着年老代越小，这会增加主回收的频率。所以最佳选择取决于应用中所分配对象的生命期分布。</p>
+					<p>年轻代的尺寸默认由<code dir="ltr">NewRatio</code>控制。例如，设置<code dir="ltr">-XX:NewRatio=3</code>意味着年轻代和年老代的比例是1:3。换句话说，伊甸园和幸存者空间的总和是整个堆大小的四分之一。</p>
+					<p>参数<code dir="ltr">NewSize</code>和<code dir="ltr">MaxNewSize</code>界定了年轻代的下限和上限。将这两个参数设置成相同的值可以固定年轻代的大小，就像设置<code dir="ltr">-Xms</code>和<code dir="ltr">-Xmx</code>为相同的值来固定堆的尺寸一样。这对细粒度地调整年轻代的大小更有用相比<code dir="ltr">NewRatio</code>的整数倍。</p>
+					<div>
+						<a id="sthref25" name="sthref25"/>
+						<h3>幸存者空间</h3>
+						<p>如果需要<code dir="ltr">SurvivorRatio</code>可以用来调整幸存者空间的大小，不过这对性能影响一般不大。例如，<code dir="ltr">-XX:SurvivorRatio=6</code>会将幸存者空间和伊甸园的比例设置为1:6。换句话说，每个幸存者空间大小将是伊甸园大小的六分之一，是整个年轻代大小的八分之一（不是七分之一，因为一共有两个幸存者空间）。</p>
+						<p>如果幸存者空间过小的话，拷贝回收会直接溢出到年老代的空间中。如果幸存者空间太大的话，他们会空着浪费掉。每次垃圾回收，虚拟机会选择一个阈值，也就是对象在进入年老代之前可以被复制的次数。选择这个阈值来保证幸存者空间是半满的。命令行选项<code dir="ltr">-XX:+PrintTenuringDistribution</code>（不适用与所有的垃圾回收器）可以显示这个阈值和年轻代中对象的年龄。这个选项对于观测应用中的对象生存期分布也是有用的。</p>
+						<p><a href="#defaults_survivor_space">表 4-2，“幸存者空间尺寸的默认参数”</a>提供了64位Solaris系统的默认参数：</p>
+						<div>
+							<a id="sthref26" name="sthref26"/>
+							<a id="defaults_survivor_space" name="defaults_survivor_space"/>
+							<p>表 4-2 幸存者空间尺寸的默认参数</p>
+							<table border="1" cellpadding="3" cellspacing="0" dir="ltr" frame="border" rules="all" summary="Default values for 64-bit Solaris operating system" title="Default Parameter Values for Survivor Space Sizing" width="100%">
+								<col width="31%"/>
+								<col width="*"/>
+								<thead>
+									<tr align="left" valign="top">
+										<th align="left" id="r1c1-t3" valign="bottom">参数</th>
+										<th align="left" id="r1c2-t3" valign="bottom">server JVM默认值</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t3" id="r2c1-t3">
+											<p><code dir="ltr">NewRatio</code></p>
+										</td>
+										<td align="left" headers="r2c1-t3 r1c2-t3">
+											<p><code dir="ltr">2</code></p>
+										</td>
+									</tr>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t3" id="r3c1-t3">
+											<p><code dir="ltr">NewSize</code></p>
+										</td>
+										<td align="left" headers="r3c1-t3 r1c2-t3">
+											<p><code dir="ltr">1310M</code></p>
+										</td>
+									</tr>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t3" id="r4c1-t3">
+											<p><code dir="ltr">MaxNewSize</code></p>
+										</td>
+										<td align="left" headers="r4c1-t3 r1c2-t3">
+											<p>not limited</p>
+										</td>
+									</tr>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t3" id="r5c1-t3">
+											<p><code dir="ltr">SurvivorRatio</code></p>
+										</td>
+										<td align="left" headers="r5c1-t3 r1c2-t3">
+											<p><code dir="ltr">8</code></p>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+							<br/>
+						</div>
+						<p>年轻代的最大尺寸通过最大堆尺寸和<code dir="ltr">NewRatio</code>计算得出。选项<code dir="ltr">MaxNewSize</code>的默认值“不受限制”表示计算结果不会受到<code dir="ltr">MaxNewSize</code>的限制，除非在命令行中为<code dir="ltr">MaxNewSize</code>指定一个值。</p>
+						<p>服务应用的设置准则是：</p>
+						<ul>
+							<li>
+								<p>首先确定可以提供给虚拟机的最大堆尺寸。然后绘制你的性能指标对应年轻代大小的图从中找到最优设置。</p>
+								<ul>
+									<li>
+										<p>注意：为了防止过多的缺页错误和换页，最大堆尺寸应该总是小于机器上安装的内存数量。</p>
+									</li>
+								</ul>
+							</li>
+							<li>
+								<p>如果整个堆的尺寸是确定的，增加年轻代的尺寸就会减少年老代的尺寸。保证年老代的尺寸足够大在任何时候都能容纳应用中所有活着的对象，此外还要留有一定的闲置空间（10-20%或更多）。</p>
+							</li>
+							<li>
+								<p>依照上述年老代的约束：</p>
+								<ul>
+									<li>
+										<p>给年轻代充足的内存。</p>
+									</li>
+									<li>
+										<p>增加处理器数量的同时增加年轻代的尺寸，因为（内存）分配可以并行化。</p>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="generations.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="collectors.html">下一节</a>
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">联系我们</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

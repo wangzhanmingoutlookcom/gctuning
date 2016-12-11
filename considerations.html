@@ -1,0 +1,136 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>其他因素</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b>
+			<br/>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="g1_gc_tuning.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;<hr/>
+			<div>
+				<a id="sthref62" name="sthref62"/>
+				<div class="smallpagetitle">
+					<h1><span>11</span> 其他因素</h1>
+				</div>
+				<p>本节介绍其他影响垃圾收集的情况。</p>
+				<div>
+					<a id="sthref63" name="sthref63"/>
+					<h2>终结、弱、软和虚引用</h2>
+					<p>一些应用通过使用终结、弱、软和虚引用与垃圾回收进行交互。这些特性在Java语言层面对性能造成影响。一个这方面的例子是通过finalize关闭文件描述符，这会导致依赖于垃圾回收及时性的额外的资源（描述将）。依赖垃圾回收管理非内存资源几乎始终是一个糟糕的主意。</p>
+					<p><a href="preface.html#CHDBHEGA">前言</a>章中<a href="preface.html#gct_related">相关的文档</a>一节有深度讨论finalize的陷阱及避免它们的文章。</p>
+				</div>
+				<div>
+					<a id="sthref64" name="sthref64"/>
+					<h2>显式垃圾回收</h2>
+					<p>应用程序和垃圾回收的另一个交互途径是显式调用 <code dir="ltr">System.gc()</code> 进行完整的垃圾回收。即使没有必要（例如，当一次小回收就能满足的时候）也会强制进行一次主回收，所以通常应该避免这种情况。显式垃圾回收对性能的影响可以通过使用 <code dir="ltr">-XX:+DisableExplicitGC</code> 标志禁用来测量，这么做会造成 VM 忽略<code dir="ltr">System.gc()</code>的调用。 </p>
+					<p>最常见的显式垃圾回收场景是 RMI 的分布式垃圾回收（DGC）。使用 RMI 的应用会引用在其他虚拟机中的对象。如果不间或地回收本地堆，这些应用中的垃圾就不会被回收，所以RMI会周期性地强制进行完整的垃圾回收。这些回收的频率可以使用属性进行控制，如以下示例所示：</p>
+					<pre dir="ltr" xml:space="preserve">
+java -Dsun.rmi.dgc.client.gcInterval=3600000
+	-Dsun.rmi.dgc.server.gcInterval=3600000 ...
+					</pre>
+					<p>该示例指定显式垃圾回收的频率是每小时运行一次而不是缺省的每分钟一次。不过，这也可能会导致某些对象需要更长时间回收。如果DGC活动时间没有上限要求的话，这些参数可以被设置到高达 <code dir="ltr">Long.MAX_VALUE</code> 来让显式垃圾回收的时间间隔无限长。</p>
+				</div>
+				<div>
+					<a id="sthref65" name="sthref65"/>
+					<h2>软引用</h2>
+					<p>服务器虚拟机中的软引用比客户机中软引用存活时间更长。其清理频率可以用命令行选项<code dir="ltr">-XX:SoftRefLRUPolicyMSPerMB=</code><code dir="ltr"><span>&lt;N&gt;</span></code>来控制，该选项指定对于堆中的每兆闲置空间软引用保持存活（一旦它不强可达了）的毫秒数（ms）。该选项的默认值是每兆1000毫秒，这意味着对于堆中的每兆闲置空间，软引用会（在对象的最后一个强引用被回收之后）存活1秒钟。这只是一个近似值，因为软引用只有在垃圾回收时才会被清除，而垃圾回收随时会发生。</p>
+				</div>
+				<div>
+					<a id="sthref66" name="sthref66"/>
+					<h2>类的元数据</h2>
+					<p>Java类在 Java Hospot VM 中的内部形式被称作类元数据。在以前的 Java Hotspot VM 版本中，类元数据被分配在所谓的永久代中。在 JDK 8 中，永久代被移除了类元数据被分配在本地内存中。可用于类元数据的本地内存大小默认是不受限制的。使用<code dir="ltr">MaxMetaspaceSize</code>选项为用于类元数据的本地内存设置上限。</p>
+					<p>Java Hotspot VM 显式管理用于元数据的空间。空间是从操作系统请求，然后分成块。一个类加载器从其块（一个块被绑定到一个特定的类加载器）为元数据分配空间。当类从类加载器卸载时，其块被回收重用或返回给操作系统。元数据使用被 <code dir="ltr">mmap</code> 分配的空间，而不是<code dir="ltr">malloc</code>。</p>
+					<p>If <code dir="ltr">UseCompressedOops</code> is turned on and <code dir="ltr">UseCompressedClassesPointers</code> is used, then two logically different areas of native memory are used for class metadata. <code dir="ltr">UseCompressedClassPointers</code> uses a 32-bit offset to represent the class pointer in a 64-bit process as does <code dir="ltr">UseCompressedOops</code> for Java object references. A region is allocated for these compressed class pointers (the 32-bit offsets). The size of the region can be set with <code dir="ltr">CompressedClassSpaceSize</code> and is 1 gigabyte (GB) by default. The space for the compressed class pointers is reserved as space allocated by <code dir="ltr">mmap</code> at initialization and committed as needed. The <code dir="ltr">MaxMetaspaceSize</code> applies to the sum of the committed compressed class space and the space for the other class metadata.</p>
+					
+					如果开启<code dir="ltr">UseCompressedOops</code>并使用<code dir="ltr">UseCompressedClassesPointers</code>，那么两个逻辑上不同的本地内存区域用于类元数据。<code dir="ltr">UseCompressedClassPointers</code>使用32位偏移量表示类指针 在64位进程中<code dir="ltr">UseCompressedOops</code>用于Java对象引用。区域分配给这些压缩的类指针（32位偏移量）。区域的大小用<code dir="ltr">CompressedClassSpaceSize</code>指定默认是1千兆字节（GB）。用于压缩类指针的空间预留作为用<code dir="ltr">mmap</code>分配的空间在初始化时根据需要提交。<code dir="ltr">MaxMetaspaceSize</code>用于提交的压缩类空间和用于其他类元数据的空间的总数
+					
+					<p>Class metadata is deallocated when the corresponding Java class is unloaded. Java classes are unloaded as a result of garbage collection, and garbage collections may be induced in order to unload classes and deallocate class metadata. When the space committed for class metadata reaches a certain level (a high-water mark), a garbage collection is induced. After the garbage collection, the high-water mark may be raised or lowered depending on the amount of space freed from class metadata. The high-water mark would be raised so as not to induce another garbage collection too soon. The high-water mark is initially set to the value of the command-line option <code dir="ltr">MetaspaceSize</code>. It is raised or lowered based on the options <code dir="ltr">MaxMetaspaceFreeRatio</code> and <code dir="ltr">MinMetaspaceFreeRatio</code>. If the committed space available for class metadata as a percentage of the total committed space for class metadata is greater than <code dir="ltr">MaxMetaspaceFreeRatio</code>, then the high-water mark will be lowered. If it is less than <code dir="ltr">MinMetaspaceFreeRatio</code>, then the high-water mark will be raised.</p>
+					<p>Specify a higher value for the option <code dir="ltr">MetaspaceSize</code> to avoid early garbage collections induced for class metadata. The amount of class metadata allocated for an application is application-dependent and general guidelines do not exist for the selection of <code dir="ltr">MetaspaceSize</code>. The default size of <code dir="ltr">MetaspaceSize</code> is platform-dependent and ranges from 12 MB to about 20 MB.</p>
+					<p>Information about the space used for metadata is included in a printout of the heap. A typical output is shown in <a href="#typical_heap_printout">Example 11-1, "Typical Heap Printout"</a>.</p>
+					<div><a id="typical_heap_printout" name="typical_heap_printout"/>
+					<p>Example 11-1 Typical Heap Printout</p>
+					<pre dir="ltr" xml:space="preserve">
+					</pre></div>
+					
+					<pre dir="ltr" xml:space="preserve">
+					Heap
+					PSYoungGen      total 10752K, used 4419K
+						[0xffffffff6ac00000, 0xffffffff6b800000, 0xffffffff6b800000)
+						eden space 9216K, 47% used
+						[0xffffffff6ac00000,0xffffffff6b050d68,0xffffffff6b500000)
+						from space 1536K, 0% used
+						[0xffffffff6b680000,0xffffffff6b680000,0xffffffff6b800000)
+						to   space 1536K, 0% used
+						[0xffffffff6b500000,0xffffffff6b500000,0xffffffff6b680000)
+					ParOldGen       total 20480K, used 20011K
+						[0xffffffff69800000, 0xffffffff6ac00000, 0xffffffff6ac00000)
+						object space 20480K, 97% used 
+						[0xffffffff69800000,0xffffffff6ab8add8,0xffffffff6ac00000)
+					Metaspace       used 2425K, capacity 4498K, committed 4864K, reserved 1056768K
+						class space   used 262K, capacity 386K, committed 512K, reserved 1048576K
+					</pre>
+					<p>In the line beginning with <code dir="ltr">Metaspace</code>, the <code dir="ltr">used</code> value is the amount of space used for loaded classes. The <code dir="ltr">capacity</code> value is the space available for metadata in currently allocated chunks. The <code dir="ltr">committed</code> value is the amount of space available for chunks. The <code dir="ltr">reserved</code> value is the amount of space reserved (but not necessarily committed) for metadata. The line beginning with <code dir="ltr">class space</code> line contains the corresponding values for the metadata for compressed class pointers.</p>
+				</div>
+			</div>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="g1_gc_tuning.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">联系我们</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,93 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>Java SE HotSpot虚拟机垃圾回收调优指南, 版本 8</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b>
+			<br/>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="toc.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="preface.html">下一节</a>
+			<hr/>
+			<div class="smallpagetitle">
+				<h1>Java Platform, Standard Edition</h1>
+			</div>
+			<p>HotSpot虚拟机垃圾回收调优指南</p>
+			<p><span>版本 8</span></p>
+			<p>E51587-02</p>
+			<p>March 2015</p>
+			<a id="sthref1" name="sthref1"/>
+			<p>Java SE HotSpot虚拟机垃圾回收调优指南, 版本 8</p>
+			<p>E51587-02</p>
+			<p>版权  2014, 2015,甲骨文公司和/或其附属公司. 保留所有权利.</p>
+			<p>这个软件和相关文档在包含使用和披露限制的许可协议下提供，并且受知识产权保护。除非在您的许可协议或法律的范围内有明确允许，否则你不能以任何形式或任何手段使用、 复制、 重现、 翻译、 广播、 修改、许可、 传输、 分发、 展示、 执行、 发布或显示任何部分。除非出于互操作性考虑且法律允许，否则逆向、反汇编或反编译该软件都是被禁止的。</p>
+			<p>本文所包含的信息可能随时更改,不另行通知，并且不保证是无错误的。如果您发现任何错误，请以书面形式报告给我们。</p>
+			<p>如果该软件或相关已经交付给美国政府或任何人代表美国政府，那么下面的通知都是适用的：</p>
+			<p>美国政府最终用户︰根据适用的联邦采购条例和代理商具体补充规定，甲骨文程序，包括任何操作系统、集成软件、任何安装在硬件上的程序或文档只要交付给给美国政府最终用户的就是"商业计算机软件"。因此，使用、 复制、 披露、 修改和改写程序，包括任何操作系统，集成的软件，任何安装在硬件上的程序，和/或文档，都应遵循适用于该程序的许可条款和许可限制。美国政府不授予其他权利。</p>
+			<p>开发该软件或硬件一般用在各种信息管理上。它开发不是为了用在任何固有危险的应用程序上，像可能会造成人身伤害的应用程序。如果你在危险的应用程序中使用此软件或硬件，你应负责采取所有适当的故障安全、 备份、 冗余和其他措施，以确保其安全使用。如果在危险应用中使用该硬件或软件造成损害，甲骨文公司和其子公司不负任何赔偿责任。</p>
+			<p>Oracle 和 Java 是 Oracle 和/或其子公司的注册商标。其他名称可能是其各自所有者的商标。</p>
+			<p>Intel和Intel Xeon是英特尔公司的商标或注册商标。所有SPARC商标在许可下使用，是SPARC国际公司的商标或注册商标。 AMD、Opteron、AMD logo和AMD Opteron logo是Advanced Micro Devices的商标或注册商标。UNIX是国际开放标准组织的注册商标。</p>
+			<p>此软件或硬件和文档可能提供访问第三方的有关内容、产品和服务的信息。甲骨文公司和其子公司不负责也没有明确否认关于第三方内容、产品和服务的任何形式的担保，除非你和甲骨文公司在适用的协议上另有规定。甲骨文公司和其附属机构将不负责由于你访问或使用第三方内容,产品或服务造成的任何损失、费用或损害赔偿，除了你和甲骨文公司规定的适用协议。</p>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="toc.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="preface.html">下一节</a>
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">联系我们</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,116 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>可用的垃圾回收器</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b><br/>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;<a href="sizing.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="parallel.html">下一节</a>
+			<hr/>
+			<div>
+				<a id="sthref27" name="sthref27"/>
+				<div class="smallpagetitle">
+					<h1><span>5</span> 可用的垃圾回收器</h1>
+				</div>
+				<p>到目前为止，我们讨论的还都是串行垃圾回收器。Java HotSpot虚拟机包含三种不同的回收器，每种有不同的性能特性。</p>
+				<ul>
+					<li>
+						<p>串行垃圾回收器使用单线程执行所有垃圾回收工作，因为没有线程间通信的开销，串行垃圾回收器相当高效。因为串行垃圾回收器不能从多处理器硬件中获益，所以其最适合于单处理器系统，虽然在多处理器中也可以用于小数据量（最多大约100MB）的应用。在某些硬件和操作系统配置下（JVM）会默认使用串行回收器，你也可以使用<code dir="ltr">-XX:+UseSerialGC</code>选项显式启用。</p>
+					</li>
+					<li>
+						<p>并行回收器（也称<i>吞吐量回收器</i>）并行地执行小回收，这会显著减少垃圾回收的开销。它适用于运行在多处理器或多线程硬件上拥有中等或大量数据的应用。在某些硬件和操作系统配置下，（JVM）会默认使用并行回收器，你也可以使用<code dir="ltr">-XX:+UseParallelGC</code>选项显式启用。</p>
+						<ul>
+							<li>
+								<p>并行紧凑排列特性可以使并行回收器并行地执行主回收。如果没有并行紧凑排列特性，主回收就只能单线程执行，这极大地限制了可扩展性。并行紧凑排列特性默认是启用的如果指定了<code dir="ltr">-XX:+UseParallelGC</code>选项。关掉它的选项是<code dir="ltr">-XX:-UseParallelOldGC</code>。</p>
+							</li>
+						</ul>
+					</li>
+					<li>
+						<p>大多数并发回收器通过并发地执行大部分垃圾回收工作（例如，当应用程序仍在运行时）来尽可能缩短垃圾回收带来的停顿。并发垃圾回收器适用于那些拥有中到大量数据、对响应时间要求高于吞吐量要求的应用，因为减少停顿的技术会降低应用性能。Java HotSpot虚拟机提供了2个主要的并发回收器；请参阅<a href="concurrent.html#mostly_concurrent">主要的并发回收器</a>。使用选项<code dir="ltr">-XX:+UseConcMarkSweepGC</code>启用CMS回收器，或<code dir="ltr">-XX:+UseG1GC</code>启用G1回收器。</p>
+					</li>
+				</ul>
+				<div>
+					<a id="sthref28" name="sthref28"/>
+					<h2>选择垃圾回收器</h2>
+					<p>除非你的应用有非常严格的停顿时间需求，运行你的应用先让虚拟机选择垃圾回收器。如果有必要，调整堆的大小来改善性能。如果性能仍然无法达到你的目标，那么使用如下指导方针作为出发点选择一个垃圾回收器。</p>
+					<ul>
+						<li>
+							<p>如果应用的数据量很小（最多大约 100 MB），那么使用<code dir="ltr">-XX:+UseSerialGC</code>选项选择串行垃圾回收器。</p>
+						</li>
+						<li>
+							<p>如果应用运行在单处理器系统中，并且没有什么停顿时间要求，那么让虚拟机选择垃圾回收器，或者使用<code dir="ltr">-XX:+UseSerialGC</code>选择串行垃圾回收器。</p>
+						</li>
+						<li>
+							<p>如果（a）应用的峰值性能是第一位的，并且（b）没有停顿时间要求或停顿一两秒或更长是可接受的，那么让虚拟机选择垃圾回收器，或者使用<code dir="ltr">-XX:+UseParallelGC</code>选择并行垃圾回收器。</p>
+						</li>
+						<li>
+							<p>如果响应时间比总体吞吐量更为重要，并且垃圾回收停顿必须控制在1秒以内，那么用<code dir="ltr">-XX:+UseConcMarkSweepGC</code>或<code dir="ltr">-XX:+UseG1GC</code>选择并发回收器。</p>
+						</li>
+					</ul>
+					<p>这些指导方针仅仅是选择垃圾回收器的出发点，因为性能依赖于堆的尺寸、应用维持的存活数据量，以及可用处理器的数量和速度。停顿时间对这些因素尤为敏感，所以上面提到的1秒阈值只是个大致数值；在许多硬件和数据量的组合情况下，并行回收可能会导致停顿时间超过1秒；反过来，在某些组合下并发回收也不能保证停顿时间小于1秒。</p>
+					<p>如果推荐的回收器未能达到期望的性能，首先尝试调整堆和代的尺寸来达到期望的目标。如果性能仍然不足，尝试不同的回收器：使用并发垃圾回收器来减少停顿时间，使用并行垃圾回收器来提高多处理器系统中的总吞吐量。</p>
+				</div>
+			</div>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="sizing.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="parallel.html">下一节</a>
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">联系我们</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

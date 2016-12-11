@@ -1,0 +1,238 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>工效学</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b>
+			<br/>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="introduction.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="generations.html">下一节</a>
+			<hr/>
+			<div>
+				<a id="ergonomics" name="ergonomics"/>
+				<div class="smallpagetitle">
+					<h1><span>2</span> 工效学</h1>
+				</div>
+				<p><i>工效学</i>是Java虚拟机(JVM)和垃圾回收器微调，如基于行为的调优，提高应用程序性能的过程。Java虚拟机为垃圾回收器、堆大小和运行时编译器提供了平台相关的默认选项。这些选项在设置更少的命令行选项的同时满足不同类型的应用的需求。此外，基于行为的优化动态调整堆的大小以满足应用程序特定的行为。</p>
+				<p>本节介绍这些默认选项和基于行为的优化。建议在使用后面介绍的细节配置之前尝试这些默认配置。</p>
+				<div>
+					<a id="sthref5" name="sthref5"/>
+					<h2>垃圾回收器，堆和运行时编译器的默认选项</h2>
+					<p>一类被称为服务器的机器被定义为具有以下特征的计算机︰</p>
+					<ul>
+						<li>
+							<p>2个或更多的物理处理器</p>
+						</li>
+						<li>
+							<p>2GB或更多的物理内存</p>
+						</li>
+					</ul>
+					<p>在服务器上，默认选项如下：</p>
+					<ul>
+						<li>
+							<p>并行垃圾回收器（Throughput garbage collector）</p>
+						</li>
+						<li>
+							<p>初始堆大小为物理内存的1/64最大1GB</p>
+						</li>
+						<li>
+							<p>最大堆大小为物理内存的1/4最大1GB</p>
+						</li>
+						<li>
+							<p>Server编译器</p>
+						</li>
+					</ul>
+					<p>64位操作系统的初始和最大堆大小，请参阅<a href="parallel.html#default_heap_size">默认堆大小</a>在<a href="parallel.html#CHDCFBIF">并行垃圾回收器</a>。</p>
+					<p>服务器机器的定义适用于所有的平台除了32位Windows操作系统。<a href="#BABIIFHA">表 2-1, "默认运行时编译器"</a>展示了不同平台默认运行时编译器。</p>
+					<div>
+						<a id="sthref6" name="sthref6"/>
+						<a id="BABIIFHA" name="BABIIFHA"/>
+						<p>表 2-1 默认运行时编译器</p>
+						<table border="1" cellpadding="3" cellspacing="0" dir="ltr" frame="border" rules="all" summary="Default runtime compiler" title="Default Runtime Compiler" width="100%">
+							<col width="*"/>
+							<col width="25%"/>
+							<col width="25%"/>
+							<col width="25%"/>
+							<thead>
+								<tr align="left" valign="top">
+									<th align="left" id="r1c1-t2" valign="bottom">平台</th>
+									<th align="left" id="r1c2-t2" valign="bottom">操作系统</th>
+									<th align="left" id="r1c3-t2" valign="bottom">（客户机）默认选项<a href="#BABFAAII" id="BABFAAII" name="BABFAAII" onclick="footdisplay(1,&quot;Client means the client runtime compiler is used. Server means the server runtime compiler is used. &quot;)"><sup>Foot1</sup></a></th>
+									<th align="left" id="r1c4-t2" valign="bottom">服务器默认选项<a href="#sthref7" id="sthref7" name="sthref7" onclick="footdisplay(1,&quot;Client means the client runtime compiler is used. Server means the server runtime compiler is used. &quot;)"><sup>Footref1</sup></a></th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr align="left" valign="top">
+									<td align="left" headers="r1c1-t2" id="r2c1-t2">
+										<p>i586</p>
+									</td>
+									<td align="left" headers="r2c1-t2 r1c2-t2">
+										<p>Linux</p>
+									</td>
+									<td align="left" headers="r2c1-t2 r1c3-t2">
+										<p>Client</p>
+									</td>
+									<td align="left" headers="r2c1-t2 r1c4-t2">
+										<p>Server</p>
+									</td>
+								</tr>
+								<tr align="left" valign="top">
+									<td align="left" headers="r1c1-t2" id="r3c1-t2">
+										<p>i586</p>
+									</td>
+									<td align="left" headers="r3c1-t2 r1c2-t2">
+										<p>Windows</p>
+									</td>
+									<td align="left" headers="r3c1-t2 r1c3-t2">
+										<p>Client</p>
+									</td>
+									<td align="left" headers="r3c1-t2 r1c4-t2">
+										<p>Client<a href="#sthref8" id="sthref8" name="sthref8" onclick="footdisplay(2,&quot;The policy was chosen to use the client runtime compiler even on a server class machine. This choice was made because historically client applications (for example, interactive applications) were run more often on this combination of platform and operating system.&quot;)"><sup>Foot2</sup></a></p>
+									</td>
+								</tr>
+								<tr align="left" valign="top">
+									<td align="left" headers="r1c1-t2" id="r4c1-t2">
+										<p>SPARC (64-bit)</p>
+									</td>
+									<td align="left" headers="r4c1-t2 r1c2-t2">
+										<p>Solaris</p>
+									</td>
+									<td align="left" headers="r4c1-t2 r1c3-t2">
+										<p>Server</p>
+									</td>
+									<td align="left" headers="r4c1-t2 r1c4-t2">
+										<p>Server<a href="#BABIFJCI" id="BABIFJCI" name="BABIFJCI" onclick="footdisplay(3,&quot;Only the server runtime compiler is supported.&quot;)"><sup>Foot3</sup></a></p>
+									</td>
+								</tr>
+								<tr align="left" valign="top">
+									<td align="left" headers="r1c1-t2" id="r5c1-t2">
+										<p>AMD (64-bit)</p>
+									</td>
+									<td align="left" headers="r5c1-t2 r1c2-t2">
+										<p>Linux</p>
+									</td>
+									<td align="left" headers="r5c1-t2 r1c3-t2">
+										<p>Server</p>
+									</td>
+									<td align="left" headers="r5c1-t2 r1c4-t2">
+										<p>Server<a href="#sthref9" id="sthref9" name="sthref9" onclick="footdisplay(3,&quot;Only the server runtime compiler is supported.&quot;)"><sup>Footref3</sup></a></p>
+									</td>
+								</tr>
+								<tr align="left" valign="top">
+									<td align="left" headers="r1c1-t2" id="r6c1-t2">
+										<p>AMD (64-bit)</p>
+									</td>
+									<td align="left" headers="r6c1-t2 r1c2-t2">
+										<p>Windows</p>
+									</td>
+									<td align="left" headers="r6c1-t2 r1c3-t2">
+										<p>Server</p>
+									</td>
+									<td align="left" headers="r6c1-t2 r1c4-t2">
+										<p>Server<a href="#sthref10" id="sthref10" name="sthref10" onclick="footdisplay(3,&quot;Only the server runtime compiler is supported.&quot;)"><sup>Footref3</sup></a></p>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+						<br/>
+					</div>
+					<p><sup>Footnote1</sup>Client是指使用客户端运行时编译器。Server是指使用服务器运行时编译器。</p>
+					<p><sup>Footnote2</sup>政策是选择使用客户端运行时编译器即使是在服务器上。做出此选择是因为从历史上看,客户端应用程序（例如，交互应用程序）更经常运行在这种组合的平台和操作系统上。</p>
+					<p><sup>Footnote3</sup>仅支持服务器运行时编译器。</p>
+				</div>
+				<div>
+					<a id="sthref11" name="sthref11"/>
+					<h2>基于行为的优化</h2>
+					<p>对于并行回收器，Java SE提供了两个基于实现应用特定行为的垃圾回收器调节参数：最长暂停时间目标和应用程序吞吐量目标;请参阅<a href="parallel.html#CHDCFBIF">并行垃圾回收器</a>。（这两个选项不适用于其他回收器。）请注意这些行为不总是能被满足。应用程序需要足够大的堆至少容纳所有的活的数据。此外，最小堆大小可能妨碍实现这些期望的目标。</p>
+					<div>
+						<a id="sthref12" name="sthref12"/>
+						<h3>最长暂停时间目标</h3>
+						<p>停顿时间是垃圾回收器停止应用程序并恢复不再使用的空间的持续时间。最长暂停时间目标旨在限制最长的停顿时间。垃圾回收器维护停顿的平均时间和方差。平均值是从（应用程序）开始执行就开始计算并且是加权的，这样停顿越最近发生权值越重。如果平均值加上方差比最长暂停时间目标大，那么就认为垃圾回收器没有达到目标。</p>
+						<p>最长暂停时间目标用这个命令行选项指定<code dir="ltr">-XX:MaxGCPauseMillis=</code><code dir="ltr"><span>&lt;nnn&gt;</span></code>。暗示垃圾回收器期望停顿时间是<code dir="ltr"><span>&lt;nnn&gt;</span></code>毫秒或更少。垃圾回收器将调整Java堆大小和其他垃圾回收相关参数试图保持垃圾回收停顿时间短于<code dir="ltr"><span>&lt;nnn&gt;</span></code>毫秒。默认情况下是没有最长暂停时间目标的。这些调整可能会导致更频繁的垃圾回收，减少应用程序的总体吞吐量。在（满足）吞吐量目标之前垃圾回收器会试图满足任何停顿时间目标。不过，在某些情况下可能不能满足期望的停顿时间目标。</p>
+					</div>
+					<div>
+						<a id="sthref13" name="sthref13"/>
+						<h3>吞吐量目标</h3>
+						<p>吞吐量目标的测量依据回收垃圾的时间和垃圾回收以外的时间（指<i>应用程序（执行）时间</i>）。该目标用这个命令行选项指定<code dir="ltr">-XX:GCTimeRatio=</code><code dir="ltr"><span>&lt;nnn&gt;</span></code>。垃圾回收时间和应用（执行）时间比值是1 / (1 + <code dir="ltr"><span>&lt;nnn&gt;</span></code>)。例如<code dir="ltr">-XX:GCTimeRatio=19</code>设置了一个1/20的目标或者说5%的时间用于垃圾回收。</p>
+						<p>垃圾回收时间是年轻代和年老代回收加起来的时间。如果吞吐量目标没有被满足，那么通过增加代的大小来增加在（两次）垃圾回收间应用程序执行的时间。</p>
+					</div>
+					<div>
+						<a id="sthref14" name="sthref14"/>
+						<h3>占用空间目标</h3>
+						<p>如果吞吐量和最长的暂停时间目标都已经满足，那么垃圾回收器减少堆的大小直到其中一个目标（总是吞吐量目标） 不能被满足。然后再解决不能被满足的目标。</p>
+					</div>
+				</div>
+				<div>
+					<a id="sthref15" name="sthref15"/>
+					<h2>调优策略</h2>
+					<p>除非你知道你需要一个大于默认最大堆大小的堆，否则不要选择堆的最大值。为您的应用程序选择一个足够的吞吐量目标。</p>
+					<p>堆会增大或缩小到能支持选定的吞吐量目标的大小。应用程序行为的变化会导致堆增大或缩小。例如，如果在应用程序开始以更快的速度分配（空间），堆将增大来保持相同的吞吐量。</p>
+					<p>如果堆增大到其最大尺寸吞吐量目标还是不能被满足，那么对于该吞吐量目标来说最大堆大小太小了。设置最大堆大小目标到一个值，接近平台总的物理内存而又不会造成应用的内存交换（swap）。再次执行应用程序。如果吞吐量目标仍不能满足，那么在该平台上就可用的内存来说应用程序（执行）时间的目标太高了。</p>
+					<p>如果吞吐量目标可以满足，但是停顿时间太长，那么选择一个最长停顿时间目标。选择一个最长停顿时间目标可能意味着你的吞吐量目标将不能达到，所以选择那些应用可以接受妥协的值。</p>
+					<p>典型情况是堆的大小会振荡，由于垃圾回收器试图满足相互竞争的目标。这是真的即使应用程序已达到一个稳定的状态。实现吞吐量目标（可能需要大的堆内存）的压力与最长暂停时间目标和占用空间目标（两者都可能需要一个小的堆内存）相互竞争。</p>
+				</div>
+			</div>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="introduction.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="generations.html">下一节</a>
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">联系我们</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

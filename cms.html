@@ -1,0 +1,368 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>并发标记清除(CMS)回收器</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b>
+			<br/>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="concurrent.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="g1_gc.html">下一节</a>
+			<hr/>
+			<div>
+				<a id="concurrent_mark_sweep_cms_collector" name="concurrent_mark_sweep_cms_collector"/>
+				<div class="smallpagetitle">
+					<h1><span>8</span> 并发标记清除(CMS)回收器</h1>
+				</div>
+				<p>并发标记清除(CMS)回收器适用于需要更短的垃圾回收停顿时间并且在运行期可以与垃圾回收共享处理器资源的应用程序。通常拥有大量长期存活（年老代比较大）数据并且运行在两个或更多处理器机器上的应用受益于使用此回收器。无论如何，任何有低停顿时间要求的应用都应该考虑此回收器。使用命令行选项<code dir="ltr">-XX:+UseConcMarkSweepGC</code>启用CMS回收器。</p>
+				<p>和其他可用回收器类似，CMS回收器也是分代的；所以也有小回收和主回收。CMS回收器试图在应用程序线程执行的同时用独立的垃圾回收线程并发地跟踪可访问的对象来减少主回收的停顿时间。在每个主回收周期中，CMS回收器在回收开始和和回收中期让所有的应用线程暂停一小段时间。第二次停顿相对时间更长。在两次停顿期间会有多个线程来进行回收工作。剩下的回收工作（包括大部分存活对象的跟踪和清除不可达对象）由一个或多个和应用并发运行的垃圾回收线程完成。小回收会在进行的主回收周期中穿插进行，其工作方式类似并行回收器（特别是，在小回收期间应用线程会被停止）。</p>
+				<a id="concurrent_mode_failure" name="concurrent_mode_failure"/>
+				<div>
+					<h2>并发模式失败</h2>
+					<p>CMS回收器使用一个或多个与应用线程同时运行的垃圾回收线程，目标是在年老代被填满之前完成回收工作。如前文所述，正常运行情况下，CMS回收器在应用仍在运行的同时做了大部分跟踪与清理工作，所以应用线程只有短暂的停顿。然而，如果在年老代被填满之前CMS回收器不能完成回收不可达对象，或是年老代中的可用闲置空间无法满足一次分配操作的时候，那么应用被暂停并用所有应用停下来的线程完成回收工作。这种不能并发地完成回收被称作<i>并发模式失败</i>并意味着需要调整CMS回收器的参数。如果并发回收被显式垃圾回收（<code dir="ltr">System.gc()</code>）中断或由于垃圾回收需要为诊断工具提供信息，那么报告并发模式中断。</p>
+				</div>
+				<div>
+					<a id="sthref35" name="sthref35"/>
+					<h2>过多的GC时间和OutOfMemoryError</h2>
+					<p>如果太多的时间用于垃圾回收CMS回收器会抛出<code dir="ltr">OutOfMemoryError</code>：如果超过98%的总时间用于垃圾回收并且小于2%的堆被回收，那么抛出一个<code dir="ltr">OutOfMemoryError</code>。这个特性用于防止堆太小而导致的应用长时间取得很少或没有进展。如果有必要，可以通过命令行选项<code dir="ltr">-XX:-UseGCOverheadLimit</code>关闭这个特性。</p>
+					<p>这个策略与在并行回收器中是一样的，除了执行并发回收的时间未计入98%的时间限制之内。也就是说，只有在应用暂停时回收执行的时间才计入过多的GC时间里。这些回收通常是由并发模式失败或显式回收请求（例如，调用<code dir="ltr">System.gc</code>）造成的。</p>
+				</div>
+				<div>
+					<a id="sthref36" name="sthref36"/>
+					<h2>浮动垃圾（Floating Garbage）</h2>
+					<p>CMS回收器，与HotSpot中的其他垃圾回收器一样，是识别至少所有堆中可访问对象的跟踪回收器。按照在Richard Jones和Rafael D. Lins的出版物<i>Garbage Collection: Algorithms for Automated Dynamic Memory</i>中的说法，它是一种增量更新回收器。因为在主回收期间应用线程和垃圾回收线程并发地执行，垃圾回收线程跟踪的对象可能在回收进程结束的时候变得不可达。这些没有被回收的不可达对象被称为浮动垃圾。<i>浮动垃圾</i>的数量取决于并发回收周期的长短和程序中引用更新的频率，也叫<i>mutations</i>。另一个原因是年轻代和年老代是独立回收的，彼此都是对方的根源（译注：年轻代与年老代中的对象相互引用）。作为一个粗略的指南，试着为漂浮垃圾多计入20%年老代空间。并发回收周期结束时堆中的漂浮垃圾在下一个回收周期中回收。</p>
+				</div>
+				<div>
+					<a id="sthref37" name="sthref37"/>
+					<h2>停顿</h2>
+					<p>在并发回收周期中CMS回收器会两次暂停应用。第一次暂停将从根（例如，来自应用线程堆栈和寄存器、静态对象等的对象引用）和堆其他地方（例如，年轻代）直接可达的对象标记为存活的。第一次停顿被称为<i>初始标记停顿</i>。第二次停顿发生在并发跟踪阶段末尾用来查找由于在CMC回收器完成追踪后引用被应用线程更新而被并发追踪错过的对象。第二次停顿被称为<i>重标记停顿</i>。</p>
+				</div>
+				<div>
+					<a id="sthref38" name="sthref38"/>
+					<h2>并发阶段</h2>
+					<p>可达对象图的并发跟踪发生在初始标记停顿和重标记停顿之间。在这个并发跟踪阶段一个或多个并发垃圾回收线程可能正在使用那些否则将被提供给应用程序使用的处理器资源。因此，在这和其他并发阶段计算密集型应用虽然应用线程不会停顿但在应用吞吐量上会有相应地下降。重标记停顿之后，并发清理阶段回收标记为不可达的对象。一旦回收周期结束，CMS回收器等待，几乎不消耗计算资源，直到下一个主回收周期开始。</p>
+				</div>
+				<div>
+					<a id="sthref39" name="sthref39"/>
+					<h2>启动并发回收周期</h2>
+					<p>在串行回收器中当年老代被填满时启动主回收并且回收时停止所有的应用线程。相比之下，并发回收必须定时启动以便能在年老代被填满之前完成回收；否则由于并发模式失败应用会停顿更长的时间。有好几种会启动并发回收的情况。</p>
+					<p>基于最近的历史记录，CMS回收器维护年老代耗尽前的剩余时间和并发回收周期所需时间的估计值。使用这些动态估计，并发回收周期以在年老代耗尽前完成回收周期的目标启动。出于安全考虑这些估计被适当放大，因为并发模式失败代价非常高。</p>
+					<p>如果老代的占用率超过初始占用率（一个年老代的百分比）并发回收也会启动。默认初始占用阈值大约是92%，但会随着版本升级而改变。此值可以使用的命令行选项<code dir="ltr">-XX:CMSInitiatingOccupancyFraction=</code><code dir="ltr"><span>&lt;N&gt;</span></code>手动调整，其中<code dir="ltr"><span>&lt;N&gt;</span></code>是年老代大小的百分比（0到100）。</p>
+				</div>
+				<div>
+					<a id="sthref40" name="sthref40"/>
+					<h2>调度停顿</h2>
+					<p>年轻代和年老代的垃圾回收停顿是独立发生的。他们不会重叠，但会快速连续发生以至于一个回收停顿，紧跟着下一个回收，似乎是一个更长的停顿。为了避免这种情况，CMS回收器尝试调度重标记停顿在上一个和下一个年轻代停顿大概中间的位置。这个调度目前还没有应用于初始标记停顿，因为它通常会比重标记停顿短很多。</p>
+				</div>
+				<a id="CJAGIIEJ" name="CJAGIIEJ"/>
+				<div>
+					<h2>增量模式</h2>
+					<p>请注意增量模式在Java SE 8中被弃用，并且可能在未来的主要版本中移除。</p>
+					<p>CMS回收器可以在用于并发阶段逐步完成的模式。回想在并发阶段垃圾回收线程使用一个或更多处理器。增量模式是旨在通过定期地停止并发阶段将处理器还给应用使用来减少长并发阶段的影响。这种模式，在这被称为<i>i-cms</i>，将回收器的并发工作分成小块的时间在年轻代回收间调度执行。这个特性对那些运行在较少处理器（例如，1或2个）的机器上并且需要CMS提供低的停顿时间的应用是非常有用的。</p>
+					<p>并发垃圾回收周期通常包括如下几步：</p>
+					<ul>
+						<li>
+							<p>停止所有的应用线程，标识从根可达的对象集，然后继续所有的应用线程。</p>
+						</li>
+						<li>
+							<p>在应用线程执行的同时，使用一个或多个处理器，并发地跟踪可达对象图。</p>
+						</li>
+						<li>
+							<p>使用一个处理器，并发重新跟踪上一步跟踪之后对象图发生变化的部分。</p>
+						</li>
+						<li>
+							<p>停止所有的应用线程，重新跟踪上次检查之后根和对象图发生变化的部分，然后继续运行所有应用线程。</p>
+						</li>
+						<li>
+							<p>使用一个处理器，并发地清理不可达对象将回收的内存添加到用于分配的闲置列表上。</p>
+						</li>
+						<li>
+							<p>使用一个处理器，并发地调整堆的大小并准备下一个回收周期所需的数据结构。</p>
+						</li>
+					</ul>
+					<p>正常情况下，在整个并发跟踪阶段CMS回收器使用一个或更多处理器，不会主动让出它们。同样，在整个并发清理阶段使用一个处理器，也不会让出。这种开销对于那些有响应时间限制（（如果不是垃圾回收）否则可能已经使用处理核心）的应用来说中断太长了，尤其是当运行在只有一个或两个处理器的系统上时。增量模式通过将并发阶段分解为一系列的短时间活动，并在两个小停顿中间调度它们解决了这个问题。</p>
+					<p>i-cms模式用占空比来控制CMS回收器自发放弃处理器之前的工作量。<i>占空比（duty cycle）</i>是年轻代回收之间允许CMS回收器运行的时间的百分比。i-cms模式可以根据应用的行为自动计算占空比（这也是推荐的方法，称为<i>自动调步（automatic pacing）</i>），当然，你也可以通过命令行给占空比设定一个固定值。</p>
+					<div>
+						<a id="sthref41" name="sthref41"/>
+						<h3>命令行选项</h3>
+						<p><a href="#i_cms_command_line_options">表 8-1，”i-cms的命令行选项“</a>列出了控制i-cms模式的命令行选项。<a href="#i_cms_recommended_options">推荐选项</a>部分提供了一组初始选项。</p>
+						<div>
+							<a id="sthref42" name="sthref42"/>
+							<a id="i_cms_command_line_options" name="i_cms_command_line_options"/>
+							<p>表 8-1 i-cms的命令行选项</p>
+							<table border="1" cellpadding="3" cellspacing="0" dir="ltr" frame="border" rules="all" summary="Command line options for i-cms" title="Command-Line Options for i-cms" width="100%">
+								<col width="*"/>
+								<col width="37%"/>
+								<col width="13%"/>
+								<col width="13%"/>
+								<thead>
+									<tr align="left" valign="top">
+									<th align="left" id="r1c1-t2" valign="bottom">选项</th>
+									<th align="left" id="r1c2-t2" valign="bottom">描述</th>
+									<th align="left" id="r1c3-t2" valign="bottom">Java SE 5及更早版本的默认值</th>
+									<th align="left" id="r1c4-t2" valign="bottom">Java SE 6及之后版本的默认值</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t2" id="r2c1-t2">
+											<p><code dir="ltr">-XX:+CMSIncrementalMode</code></p>
+										</td>
+										<td align="left" headers="r2c1-t2 r1c2-t2">
+											<p>启用增量模式。注意CMS回收器也必须被启用（使用<code dir="ltr">-XX:+UseConcMarkSweepGC</code>选项），否则该选项无效。</p>
+										</td>
+										<td align="left" headers="r2c1-t2 r1c3-t2">
+											<p>禁用</p>
+										</td>
+										<td align="left" headers="r2c1-t2 r1c4-t2">
+											<p>禁用</p>
+										</td>
+									</tr>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t2" id="r3c1-t2">
+											<p><code dir="ltr">-XX:+CMSIncrementalPacing</code></p>
+										</td>
+										<td align="left" headers="r3c1-t2 r1c2-t2">
+											<p>启用自动调步。根据收集的JVM运行时统计数据增量模式占空比是自动进行调整。</p>
+										</td>
+										<td align="left" headers="r3c1-t2 r1c3-t2">
+											<p>禁用</p>
+										</td>
+										<td align="left" headers="r3c1-t2 r1c4-t2">
+											<p>禁用</p>
+										</td>
+									</tr>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t2" id="r4c1-t2">
+											<p><code dir="ltr">-XX:CMSIncrementalDutyCycle=</code><code dir="ltr"><span>&lt;N&gt;</span></code></p>
+										</td>
+										<td align="left" headers="r4c1-t2 r1c2-t2">
+											<p>允许CMS回收器在小回收间运行的时间的百分比（0-100）。如果启用<code dir="ltr">CMSIncrementalPacing</code>，那么这个值就是初始值。</p>
+										</td>
+										<td align="left" headers="r4c1-t2 r1c3-t2">
+											<p>50</p>
+										</td>
+										<td align="left" headers="r4c1-t2 r1c4-t2">
+											<p>10</p>
+										</td>
+									</tr>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t2" id="r5c1-t2">
+											<p><code dir="ltr">-XX:CMSIncrementalDutyCycleMin=</code><code dir="ltr"><span>&lt;N&gt;</span></code></p>
+										</td>
+										<td align="left" headers="r5c1-t2 r1c2-t2">
+											<p><code dir="ltr">CMSIncrementalPacing</code>选项启用后占空比的下限（0-100）。</p>
+										</td>
+										<td align="left" headers="r5c1-t2 r1c3-t2">
+											<p>10</p>
+										</td>
+										<td align="left" headers="r5c1-t2 r1c4-t2">
+											<p>0</p>
+										</td>
+									</tr>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t2" id="r6c1-t2">
+											<p><code dir="ltr">-XX:CMSIncrementalSafetyFactor=</code><code dir="ltr"><span>&lt;N&gt;</span></code></p>
+										</td>
+										<td align="left" headers="r6c1-t2 r1c2-t2">
+											<p>计算占空比时额外增加的一个百分比（0-100）。</p>
+										</td>
+										<td align="left" headers="r6c1-t2 r1c3-t2">
+											<p>10</p>
+										</td>
+										<td align="left" headers="r6c1-t2 r1c4-t2">
+											<p>10</p>
+										</td>
+									</tr>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t2" id="r7c1-t2">
+											<p><code dir="ltr">-XX:CMSIncrementalOffset=</code><code dir="ltr"><span>&lt;N&gt;</span></code></p>
+										</td>
+										<td align="left" headers="r7c1-t2 r1c2-t2">
+											<p>小回收期间增量模式占空比的偏移量（0-100）。</p>
+										</td>
+										<td align="left" headers="r7c1-t2 r1c3-t2">
+											<p>0</p>
+										</td>
+										<td align="left" headers="r7c1-t2 r1c4-t2">
+											<p>0</p>
+										</td>
+									</tr>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t2" id="r8c1-t2">
+											<p><code dir="ltr">-XX:CMSExpAvgFactor=</code><code dir="ltr"><span>&lt;N&gt;</span></code></p>
+										</td>
+										<td align="left" headers="r8c1-t2 r1c2-t2">
+											<p>计算CMS回收统计信息的指数平均值时当前样本的权值（0-100）。</p>
+										</td>
+										<td align="left" headers="r8c1-t2 r1c3-t2">
+											<p>25</p>
+										</td>
+										<td align="left" headers="r8c1-t2 r1c4-t2">
+											<p>25</p>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+							<br/>
+						</div>
+					</div>
+					<a id="i_cms_recommended_options" name="i_cms_recommended_options"/>
+					<div>
+						<h3>推荐选项</h3>
+						<p>要在Java SE 8里使用i-cms，需要使用如下命令行选项：</p>
+						<pre dir="ltr" xml:space="preserve">
+-XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode \
+-XX:+PrintGCDetails -XX:+PrintGCTimeStamps
+						</pre>
+						<p>前两个选项分别启用CMS回收器和i-cms。后两个参数不是必须的；它们只是要求将垃圾回收相关诊断信息打印到标准输出，这样垃圾回收器的行为就可以被看到并用于后续分析。</p>
+						<p>对于Java SE 5和之前的版本，Oracle建议i-cms使用如下的初始命令行选项集：</p>
+						<pre dir="ltr" xml:space="preserve">
+-XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode \
+-XX:+PrintGCDetails -XX:+PrintGCTimeStamps \
+-XX:+CMSIncrementalPacing -XX:CMSIncrementalDutyCycleMin=0
+-XX:CMSIncrementalDutyCycle=10
+						</pre>
+						<p>Java SE 8建议使用相同的值虽然三个控制i-cms自动调步的值在Java SE 6中是默认值。</p>
+					</div>
+					<div>
+						<a id="sthref43" name="sthref43"/>
+						<h3>基本疑难解答</h3>
+						<p>i-cms自动调步特性使用程序运行时收集到的统计信息计算占空比以使并发回收在堆被占满之前完成。不过，由于过去的行为并不能完美地预测将来的行为并且这些估计值可能并不总是足够准确到阻止堆被填满。如果发生太多次堆被填满后的垃圾回收，可以尝试<a href="#troubleshooting_i_cms">表 8-2，”i-cms自动调步功能故障排除“</a>中步骤，一次一个。</p>
+						<div>
+							<a id="sthref44" name="sthref44"/>
+							<a id="troubleshooting_i_cms" name="troubleshooting_i_cms"/>
+							<p>表 8-2 i-cms自动调步功能故障排除</p>
+							<table border="1" cellpadding="3" cellspacing="0" dir="ltr" frame="border" rules="all" summary="Basic troubleshooting to prevent heap from becoming full" title="Troubleshooting the i-cms Automatic Pacing Feature" width="100%">
+								<col width="31%"/>
+								<col width="*"/>
+								<thead>
+									<tr align="left" valign="top">
+									<th align="left" id="r1c1-t3" valign="bottom">步骤</th>
+									<th align="left" id="r1c2-t3" valign="bottom">选项</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t3" id="r2c1-t3">
+											<p>1. 增加安全系数。</p>
+										</td>
+										<td align="left" headers="r2c1-t3 r1c2-t3">
+											<p><code dir="ltr">-XX:CMSIncrementalSafetyFactor=</code><code dir="ltr"><span>&lt;N&gt;</span></code></p>
+										</td>
+									</tr>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t3" id="r3c1-t3">
+											<p>2. 增加最小占空比。</p>
+										</td>
+										<td align="left" headers="r3c1-t3 r1c2-t3">
+											<p><code dir="ltr">-XX:CMSIncrementalDutyCycleMin=</code><code dir="ltr"><span>&lt;N&gt;</span></code></p>
+										</td>
+									</tr>
+									<tr align="left" valign="top">
+										<td align="left" headers="r1c1-t3" id="r4c1-t3">
+											<p>3. 关闭自动调步并使用一个固定的占空比。</p>
+										</td>
+										<td align="left" headers="r4c1-t3 r1c2-t3">
+											<p><code dir="ltr">-XX:-CMSIncrementalPacing -XX:CMSIncrementalDutyCycle=</code><code dir="ltr"><span>&lt;N&gt;</span></code></p>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+							<br/>
+						</div>
+					</div>
+				</div>
+				<div>
+					<a id="sthref45" name="sthref45"/>
+					<h2>测量</h2>
+					<p><a href="#output_from_cms_collector">例 8-1，”CMS回收器的输出“</a>是CMS回收器使用<code dir="ltr">-verbose:gc</code>和<code dir="ltr">-XX:+PrintGCDetails</code>选项时的输出，去掉了一些小细节。注意CMS回收器的输出中掺杂着小回收的输出；通常一个并发回收期间会发生很多小回收。CMS-initial-mark表示并发回收周期开始，CMS-concurrent-mark表示并发标记阶段结束，CMS-concurrent-sweep表示并发清理阶段结束。之前没有提到过的预清除阶段用CMS-concurrent-preclean表示。预清除是重标记阶段CMS-remark的准备工作其可以并发执行。最后一个阶段用CMS-concurrent-reset表示同时准备下一次并发回收。</p>
+					<div>
+						<a id="output_from_cms_collector" name="output_from_cms_collector"/>
+						<p>例 8-1 CMS回收器的输出</p>
+						<pre dir="ltr" xml:space="preserve">
+[GC [1 CMS-initial-mark: 13991K(20288K)] 14103K(22400K), 0.0023781 secs]
+[GC [DefNew: 2112K-&gt;64K(2112K), 0.0837052 secs] 16103K-&gt;15476K(22400K), 0.0838519 secs]
+...
+[GC [DefNew: 2077K-&gt;63K(2112K), 0.0126205 secs] 17552K-&gt;15855K(22400K), 0.0127482 secs]
+[CMS-concurrent-mark: 0.267/0.374 secs]
+[GC [DefNew: 2111K-&gt;64K(2112K), 0.0190851 secs] 17903K-&gt;16154K(22400K), 0.0191903 secs]
+[CMS-concurrent-preclean: 0.044/0.064 secs]
+[GC [1 CMS-remark: 16090K(20288K)] 17242K(22400K), 0.0210460 secs]
+[GC [DefNew: 2112K-&gt;63K(2112K), 0.0716116 secs] 18177K-&gt;17382K(22400K), 0.0718204 secs]
+[GC [DefNew: 2111K-&gt;63K(2112K), 0.0830392 secs] 19363K-&gt;18757K(22400K), 0.0832943 secs]
+...
+[GC [DefNew: 2111K-&gt;0K(2112K), 0.0035190 secs] 17527K-&gt;15479K(22400K), 0.0036052 secs]
+[CMS-concurrent-sweep: 0.291/0.662 secs]
+[GC [DefNew: 2048K-&gt;0K(2112K), 0.0013347 secs] 17527K-&gt;15479K(27912K), 0.0014231 secs]
+[CMS-concurrent-reset: 0.016/0.016 secs]
+[GC [DefNew: 2048K-&gt;1K(2112K), 0.0013936 secs] 17527K-&gt;15479K(27912K), 0.0014814 secs
+]
+						</pre>
+					</div>
+					<p>与小回收停顿时间相比初始标记停顿时间更短。并发阶段（并发标记、并发预清除和并发清除）通常会比小回收停顿持续更长时间，如<a href="#output_from_cms_collector">例 8-1，”CMS回收器的输出“</a>所示。不过注意，应用并没有在这些并发阶段中停顿下来。重标记停顿通常比小回收时间长。重标记停顿受某些应用特征（例如，较高的对象修改率会增加这个停顿）和上一次小回收（即，更多的年轻代对象可能会增加这个停顿）之后的时间的影响。</p>
+				</div>
+			</div>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="concurrent.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="g1_gc.html">下一节</a>
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">Contact Us</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

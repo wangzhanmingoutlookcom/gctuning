@@ -1,0 +1,143 @@
+﻿<!DOCTYPE>
+<html>
+	<head>
+		<title>G1垃圾回收器</title>
+		<link rel="stylesheet" type="text/css" href="css/default_developer.css" />
+	</head>
+	<body>
+		<div class="a0 a0v1" id="a0v1">
+			<div class="a1 a1r2">
+				<div class="a1v0">
+					<a href="#skip2content" class="skiplink">Skip to Content</a>
+				</div>
+			</div>
+			<div class="a2w0">
+				<div class="a2" id="a2v1">
+					<div class="a2w1">
+						<div class="a2w2">
+							<div class="a2w3">
+								<div class="a2w4">
+									<div class="a2topiclinks">
+										<a href="http://www.oracle.com" title="Oracle Home Page" id="sunlogo" name="sunlogo"><img src="im/a.gif" alt="Home Page" width="98" height="58" border="0" /></a>
+										<ul id="mtopics">
+											<li id="mtopic1">
+												<a id="glink1" class="tpclink a2menu" title="See Oracle Technology Network" href="http://oracle.com/technology" name="glink1">Oracle技术网</a>
+											</li>
+											<li id="mtopic2">
+												<a id="glink2" class="tpclink a2menu" title="Software Downloads" href="http://www.oracle.com/technology/software/index.html" name="glink2">软件下载</a>
+											</li>
+											<li id="mtopic3">
+												<a id="glink3" class="tpclink a2menu" title="See Java SE Documentation" href="http://docs.oracle.com/javase/index.html" name="glink3">文档</a>
+											</li>
+										</ul>
+										<div class="a2search">
+											<a href="http://docs.oracle.com/javase/search.html" target="_blank">搜索</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hr">
+				<hr />
+			</div>
+			<a name="skip2content" id="skip2content"></a>
+			<b>Java SE HotSpot虚拟机垃圾回收调优指南</b>
+			<br/>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="cms.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="g1_gc_tuning.html">下一节</a>
+			<hr/>
+			<div>
+				<a id="garbage_first_garbage_collection" name="garbage_first_garbage_collection"/>
+				<div class="smallpagetitle">
+					<h1><span>9</span> G1垃圾回收器</h1>
+				</div>
+				<p>G1垃圾回收器是服务器类型的垃圾回收器，旨在大内存的多处理器机器。它试图它在实现高吞吐量的同时高概率地满足垃圾回收（GC）停顿时间目标。对整个堆的操作，像全局标记，与应用线程并发执行。这可以阻止（发生概率）与堆或存活数据的大小成正比的中断。</p>
+				<p>G1回收器通过以下技术实现了高性能和停顿时间目标。</p>
+				<p>堆被分成许多相同大小的区域，每块区域都是连续的虚拟内存。G1在并发全局标记阶段检测整个堆中的存活对象。标记阶段完成后，G1知道哪些区域大多是空的。它首先回收这些区域，这经常能产生大量的空闲空间。这也是为什么这种垃圾回收方法叫做G1（Garbage-First）。顾名思义，G1把它的回收和压缩活动集中在很可能充满可回收对象，即垃圾，的堆区域。G1用停顿（时间）预测模型来满足用户自定义的停顿时间目标并基于特定的停顿时间目标选择回收区域的数量。</p>
+				<p>G1将对象从堆中一个或多个区域复制到堆中的单个区域，在这个过程中压缩并释放内存。这种疏散工作（evacuation）在多处理器机器上并行执行来减少停顿时间增加吞吐量。这样，随着每次垃圾回收，G1连续地工作来减少碎片。这种能力超越了前面两种方法。CMS（并发标记清除）垃圾回收器不执行压缩。而（并行回收器的）并行压缩是在整个堆中执行压缩，这又造成了相当大的停顿时间。</p>
+				<p>需要注意的是G1不是实时回收器。它高概率地满足设定的停顿时间目标但不是绝对确定的。基于以前回收的（统计）数据，G1估算在目标时间内能回收多少区域。这样回收器就有一个回收区域花销的合理准确模型，它用这个模型决定保持在目标停顿时间内回收哪些多少区域。</p>
+				<p>G1首先关注的是为运行需要有限GC延迟的大堆的应用的用户提供一个解决方案。这意味着堆的大小大约6GB或更大，和一个稳定的可预见的低于0.5秒的停顿时间。</p>
+				<p>现在运行的应用如果有一个或多个下面的特征不管是CMS还是并行回收器都将受益于切换到G1回收器。</p>
+				<ul>
+					<li>
+						<p>存活数据占用超过50%的Java堆空间。</p>
+					</li>
+					<li>
+						<p>对象分配率或提升率变化显著（The rate of object allocation rate or promotion varies significantly）。</p>
+					</li>
+					<li>
+						<p>应用遇到意外长的垃圾回收或压缩停顿时间（大于0.5到1秒）。</p>
+					</li>
+				</ul>
+				<p>G1计划长期替代并发标记清除回收器（CMS）。对比G1与CMS的不同显示G1是更好的解决方案。其中一个区别是G1是一个压缩回收器。此外，G1比CMS回收器提供更可预测的垃圾回收停顿时间，并允许用户指定所需的停顿时间目标。</p>
+				<p>相比CMS，G1是为需要更短GC时间的应用设计的。</p>
+				<p>G1把堆划分成固定大小的区域（灰色框）<a href="#heap_division_by_g1">图 9-1，“G1堆划分”</a>。</p>
+				<div>
+					<a id="heap_division_by_g1" name="heap_division_by_g1"/>
+					<p><b><i>图 9-1 G1堆划分</i></b></p>
+					<img alt="Description of Figure 9-1 follows" longdesc="img_text/jsgct_dt_004_grbg_frst_hp.htm" src="img/jsgct_dt_004_grbg_frst_hp.png"/>
+					<br/>
+					<a href="http://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/img_text/jsgct_dt_004_grbg_frst_hp.html" id="sthref46" name="sthref46">“图 9-1，G1堆划分”的描述</a>
+					<br/>
+					<br/>
+				</div>
+				<p>G1在逻辑上是分代的。一组空区域被指定为逻辑年轻代。在图中，年轻代是浅蓝色的。（先）在逻辑年轻代中分配，当年轻代被填满后，该组区域就会被垃圾回收（年轻代回收）。有时候，年轻代以外的区域（年老代区域用深蓝色表示）可能同时进行垃圾回收。这被称为<i>混合回收</i>。在图中，正在被回收的区域用红色框表示。该图显示的是一个混合回收因为年轻代区域和年老代区域都在进行回收。该垃圾回收是压缩回收，回收时复制存活对象到选定的、初始的空闲区域。根据幸存对象的年龄，对象可能被复制到幸存者区域（用“S”标记）或者被复制到年老代（没有特殊标记）。用“H”标记的区域包含超过半个区域的巨大对象并被特殊对待；请参阅<a href="#garbage_first_garbage_collection">G1垃圾回收器</a>章中<a href="g1_gc_tuning.html#humongous">超大对象与其分配</a>一节。</p>
+				<a id="allocation_evacuation_failure" name="allocation_evacuation_failure"/>
+				<div>
+					<h2>分配（疏散）失败</h2>
+					<p>相比CMS，G1回收器在应用继续运行的时候运行部分回收并存在应用分配对象比垃圾回收器恢复空闲空间快的风险。关于CMS类似的行为请参阅<a href="cms.html#concurrent_mark_sweep_cms_collector">并发标记清除（CMS）回收器</a>章中<a href="cms.html#concurrent_mode_failure">并发模式失败</a>一节。在G1中，失败（Java堆耗尽）可能会发生在当G1从一个区域复制存活数据（疏散）到另一个区域的时候。复制时会压缩存活数据。如果垃圾回收区域疏散时没能找到一个空闲（空的）区域，那么分配失败就会发生（因为没有足够的空间来分配来自疏散区域的存活对象）并执行一次停止一切（stop-the-world）（STW）的完整回收。</p>
+				</div>
+				<div>
+					<a id="sthref47" name="sthref47"/>
+					<h2>浮动垃圾</h2>
+					<p>在G1回收期间对象可能会死掉并且没有被回收。G1使用一种叫做snapshot-at-the-beginning（SATB）的技术保证垃圾回收器能找到所有的存活对象。为了回收的目的SATB声明所有在并发标记（整个堆中的标记）开始时存活对象被认为是存活的。SATB允许浮动垃圾以一种类似CMS增量更新的方式。</p>
+				</div>
+				<a id="pauses" name="pauses"/>
+				<div>
+					<h2>停顿</h2>
+					<p>G1暂停应用来将存活对象复制到新区域。这个停顿可能是只有年轻代区域被回收的年轻代回收停顿也可能是年轻代和年老代区域被疏散的混合回收停顿。和CMS一样也有最终标记或（称为）重标记停顿在应用暂停期间完成标记。然而CMS还有一个初始标记停顿，G1把初始标记工作作为疏散停顿的一部分。G1在回收结束时有一个半STW半并发的清除阶段。清除阶段STW部分标识空区域并确定下一次回收的候选年老代区域 。</p>
+				</div>
+				<div>
+					<a id="sthref48" name="sthref48"/>
+					<h2>卡表和并发阶段</h2>
+					<p>如果垃圾回收器不是回收整个堆（一个<i>增量回收</i>）的话，垃圾回收器就需要知道从堆未回收部分到堆正在回收的部分的指针在哪。通常在分代垃圾回收器中堆未回收部分往往是年老代，堆中已经回收的部分是年轻代。保持这些信息（年老代指向年轻代对象）的数据结构，是一个<i>记忆集合（remembered set）</i>。<i>卡表（card table）</i>是一种特殊类型的记忆集合。Java HotSpot VM用一个字节数组代表一个卡表。每个字节指向一个<i>卡片（card）</i>。一个卡片对应堆中的一个地址范围。<i>置黑卡片（Dirtying a card）</i>是指修改字节的值为<i>黑值（dirty value）</i>；一个黑值可能包含从年老代指向卡片覆盖地址范围内年轻代的新指针。</p>
+					<p><i>处理卡片（Processing a card）</i>是指查看卡片是否有一个年老代指向年轻代的指针并可能根据这个信息做些事如把他转换成另一种数据结构。</p>
+					<p>G1存在并发标记阶段标记从应用中找到的存活对象。并发标记从疏散停顿（在此做初始标记工作）结束一直延伸到重标记。并发清除阶段把回收清空的区域添加到空闲区域列表并清除这些区域的记忆集合。此外，并发细化线程根据需要处理被应用置黑和可能有跨区域引用的卡表条目。</p>
+				</div>
+				<div>
+					<a id="sthref49" name="sthref49"/>
+					<h2>启动并发回收周期</h2>
+					<p>如前文所述，在混合回收中年轻代和年老代区域都被垃圾回收。为了回收年老代区域，G1做一个堆中存活数据的完整标记。这个标记在并发标记阶段做。当整个堆占用率达到参数值<code dir="ltr">InitiatingHeapOccupancyPercent</code>时启动并发标记阶段。用命令行参数<code dir="ltr">-XX:InitiatingHeapOccupancyPercent=</code><code dir="ltr"><span>&lt;NN&gt;</span></code>设置该值。<code dir="ltr">InitiatingHeapOccupancyPercent</code>的默认值是45。</p>
+				</div>
+				<a id="pause_time_goal" name="pause_time_goal"/>
+				<div>
+					<h2>停顿时间目标</h2>
+					<p>使用<code dir="ltr">MaxGCPauseMillis</code>标志为G1设置停顿时间目标。G1使用预测模型来决定在目标停顿时间内做多少垃圾回收工作。在回收结束时，G1选定要在下一次回收中回收的区域（回收集）。回收集将包括年轻代区域（其大小的总和确定了逻辑年轻代的大小）。一部分通过G1对回收集合中年轻代区域数目的选取来控制GC停顿的长短。您也可以像其他垃圾回收器那样在命令行上指定年轻代的大小，但这样做可能会妨碍G1达到目标停顿时间的能力。除了停顿时间目标，您可以指定停顿发生间隔时间的长度。您可以在指定停顿时间目标的同时用（<code dir="ltr">GCPauseIntervalMillis</code>）指定最小间隔时间（minimum mutator usage）。<code dir="ltr">MaxGCPauseMillis</code>的默认值是200毫秒。<code dir="ltr">GCPauseIntervalMillis</code>的默认值（0）相当于在时间跨度上没有要求。</p>
+				</div>
+			</div>
+			<a href="toc.html">目录</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="cms.html">上一节</a>
+			&nbsp;&nbsp;&nbsp;
+			<a href="g1_gc_tuning.html">下一节</a>
+			<hr/>
+			<div id="javasefooter">
+				<div class="hr">
+					<hr />
+				</div>
+				<div id="javasecopyright">
+					<a href="http://docs.oracle.com/javase/8/docs/legal/cpyr.html">版权 &#169;</a> 1993, 2016, Oracle 和/或其附属公司。版权所有。
+				</div>
+				<div id="javasecontactus">
+					<a href="http://docs.oracle.com/javase/feedback.html">联系我们</a>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
